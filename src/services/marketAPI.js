@@ -20,7 +20,8 @@ const FALLBACK_PRICES = {
 
 let cachedPrices = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 60 * 1000;
+const CACHE_DURATION     = 3 * 60 * 1000;  // 3 dakika — normal yenileme
+const MIN_FORCE_INTERVAL = 30 * 1000;       // pull-to-refresh arası min 30sn
 
 export const MarketAPI = {
   // ── 1. Döviz Kurları ──────────────────────────────────────────────────────
@@ -67,6 +68,11 @@ export const MarketAPI = {
       });
       return result;
     } catch (e) {
+      // 429: rate limit — son cache varsa onu dön, hardcoded'a düşme
+      if (e.message.includes('429') && cachedPrices?.crypto) {
+        console.warn('CoinGecko rate limit, önbellek kullanılıyor.');
+        return cachedPrices.crypto;
+      }
       console.warn('Crypto fetch failed, using fallback:', e.message);
       const result = {};
       Object.keys(FALLBACK_PRICES.crypto).forEach((key) => {
@@ -79,7 +85,14 @@ export const MarketAPI = {
   // ── 4. Tüm Fiyatlar ───────────────────────────────────────────────────────
   async fetchAllPrices(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && cachedPrices && now - lastFetchTime < CACHE_DURATION) {
+    const elapsed = now - lastFetchTime;
+
+    // Normal cache kontrolü
+    if (!forceRefresh && cachedPrices && elapsed < CACHE_DURATION) {
+      return cachedPrices;
+    }
+    // Force refresh bile olsa 30sn geçmemişse beklet (rate limit koruması)
+    if (forceRefresh && cachedPrices && elapsed < MIN_FORCE_INTERVAL) {
       return cachedPrices;
     }
 

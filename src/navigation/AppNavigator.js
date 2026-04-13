@@ -24,9 +24,9 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           const icons = {
-            Ana Sayfa: focused ? 'home' : 'home-outline',
-            Portföy: focused ? 'briefcase' : 'briefcase-outline',
-            Ayarlar: focused ? 'person' : 'person-outline',
+            'Ana Sayfa': focused ? 'home' : 'home-outline',
+            'Portföy': focused ? 'briefcase' : 'briefcase-outline',
+            'Ayarlar': focused ? 'person' : 'person-outline',
           };
           return <Ionicons name={icons[route.name] || 'ellipse'} size={size} color={color} />;
         },

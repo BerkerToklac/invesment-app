@@ -76,41 +76,23 @@ export const MarketAPI = {
     }
   },
 
-  // ── 3. Metal Fiyatları ────────────────────────────────────────────────────
-  // Birincil: goldprice.org (ücretsiz, key yok)
-  // Fallback:  altın → PAXG (CoinGecko'dan zaten çekildi) ÷ 31.1
-  //            gümüş → sabit değer
-  async fetchMetalPrices(cryptoPrices = null) {
+  // ── 3. Gümüş Fiyatı (Yahoo Finance SI=F futures) ─────────────────────────
+  // Altın için ayrı API'ye gerek yok: 1 PAXG = 1 troy oz altın,
+  // CoinGecko kripto çağrısında zaten geliyor.
+  async fetchSilverPrice() {
     try {
-      const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {
-        headers: { Accept: 'application/json' },
-      });
+      const res = await fetch(
+        'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SI%3DF&fields=regularMarketPrice',
+        { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' } }
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const item = Array.isArray(data.items) ? data.items[0] : null;
-      if (!item?.xauPrice) throw new Error('Geçersiz yanıt formatı');
-
-      return {
-        goldOzUSD:    item.xauPrice,
-        silverOzUSD:  item.xagPrice,
-        goldGramUSD:  item.xauPrice  / TROY_OZ_TO_GRAM,
-        silverGramUSD: item.xagPrice / TROY_OZ_TO_GRAM,
-        source: 'goldprice.org',
-      };
+      const price = data.quoteResponse?.result?.[0]?.regularMarketPrice;
+      if (!price) throw new Error('Fiyat verisi boş');
+      return price; // USD / troy oz
     } catch (e) {
-      console.warn('goldprice.org başarısız, yedek kullanılıyor:', e.message);
-
-      // Altın: PAXG zaten CoinGecko'dan çekildi (1 PAXG = 1 troy oz altın)
-      const paxgUsd = cryptoPrices?.['pax-gold']?.usd;
-      const goldOz  = paxgUsd || FALLBACK_PRICES.goldGramUSD * TROY_OZ_TO_GRAM;
-
-      return {
-        goldOzUSD:    goldOz,
-        silverOzUSD:  FALLBACK_PRICES.silverGramUSD * TROY_OZ_TO_GRAM,
-        goldGramUSD:  goldOz / TROY_OZ_TO_GRAM,
-        silverGramUSD: FALLBACK_PRICES.silverGramUSD,
-        source: paxgUsd ? 'paxg-fallback' : 'hardcoded-fallback',
-      };
+      console.warn('Gümüş fiyatı alınamadı, sabit değer kullanılıyor:', e.message);
+      return FALLBACK_PRICES.silverGramUSD * TROY_OZ_TO_GRAM;
     }
   },
 
@@ -121,14 +103,24 @@ export const MarketAPI = {
       return cachedPrices;
     }
 
-    // Forex ve kripto paralel, metaller kripto bittikten sonra
-    // (PAXG fallback için kripto sonuçları gerekli)
-    const [forex, crypto] = await Promise.all([
+    // Forex, kripto ve gümüş paralel çekilir
+    const [forex, crypto, silverOzUSD] = await Promise.all([
       this.fetchForexRates(),
       this.fetchCryptoPrices(),
+      this.fetchSilverPrice(),
     ]);
 
-    const metals = await this.fetchMetalPrices(crypto);
+    // Altın: 1 PAXG = 1 troy oz altın (CoinGecko'dan geliyor, ayrı API yok)
+    const goldOzUSD   = crypto?.['pax-gold']?.usd ?? FALLBACK_PRICES.goldGramUSD * TROY_OZ_TO_GRAM;
+    const goldGramUSD = goldOzUSD / TROY_OZ_TO_GRAM;
+    const silverGramUSD = silverOzUSD / TROY_OZ_TO_GRAM;
+
+    const metals = {
+      goldOzUSD,
+      silverOzUSD,
+      goldGramUSD,
+      silverGramUSD,
+    };
 
     const prices = {
       forex,

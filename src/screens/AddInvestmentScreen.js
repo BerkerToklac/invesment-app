@@ -22,18 +22,15 @@ import { Colors } from '../theme/colors';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { PREDEFINED_ASSETS } from '../utils/assets';
-import { formatUSD } from '../utils/formatters';
+import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
 
 // ── Tarih Seçici ─────────────────────────────────────────────────────────────
 function DatePickerField({ value, onChange }) {
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState(value);
 
-  const formatted = value.toLocaleDateString('tr-TR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  // Istanbul saatiyle Türkçe uzun format: "13 Nisan 2026"
+  const formatted = formatDateLong(value);
 
   const handleChange = (event, selected) => {
     if (Platform.OS === 'android') {
@@ -243,7 +240,7 @@ export default function AddInvestmentScreen({ navigation }) {
         type: selectedAsset.type,
         emoji: selectedAsset.emoji,
         color: selectedAsset.color,
-        date: date.toISOString().split('T')[0],
+        date: toIstanbulDateStr(date),
         amount: parseFloat(amount),
         buyPriceUSD: parseFloat(buyPrice),
         notes: '',

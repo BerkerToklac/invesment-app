@@ -76,26 +76,6 @@ export const MarketAPI = {
     }
   },
 
-  // ── 3. Gümüş Fiyatı (Yahoo Finance SI=F futures) ─────────────────────────
-  // Altın için ayrı API'ye gerek yok: 1 PAXG = 1 troy oz altın,
-  // CoinGecko kripto çağrısında zaten geliyor.
-  async fetchSilverPrice() {
-    try {
-      const res = await fetch(
-        'https://query1.finance.yahoo.com/v7/finance/quote?symbols=SI%3DF&fields=regularMarketPrice',
-        { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' } }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const price = data.quoteResponse?.result?.[0]?.regularMarketPrice;
-      if (!price) throw new Error('Fiyat verisi boş');
-      return price; // USD / troy oz
-    } catch (e) {
-      console.warn('Gümüş fiyatı alınamadı, sabit değer kullanılıyor:', e.message);
-      return FALLBACK_PRICES.silverGramUSD * TROY_OZ_TO_GRAM;
-    }
-  },
-
   // ── 4. Tüm Fiyatlar ───────────────────────────────────────────────────────
   async fetchAllPrices(forceRefresh = false) {
     const now = Date.now();
@@ -103,16 +83,22 @@ export const MarketAPI = {
       return cachedPrices;
     }
 
-    // Forex, kripto ve gümüş paralel çekilir
-    const [forex, crypto, silverOzUSD] = await Promise.all([
+    // Forex ve kripto paralel çekilir — ayrı metals API yok
+    const [forex, crypto] = await Promise.all([
       this.fetchForexRates(),
       this.fetchCryptoPrices(),
-      this.fetchSilverPrice(),
     ]);
 
-    // Altın: 1 PAXG = 1 troy oz altın (CoinGecko'dan geliyor, ayrı API yok)
+    // Altın: 1 PAXG = 1 troy oz altın (CoinGecko'dan geliyor, sıfır ekstra istek)
     const goldOzUSD   = crypto?.['pax-gold']?.usd ?? FALLBACK_PRICES.goldGramUSD * TROY_OZ_TO_GRAM;
     const goldGramUSD = goldOzUSD / TROY_OZ_TO_GRAM;
+
+    // Gümüş: altın/gümüş oranından türetilir.
+    // Ücretsiz & çalışan bir gümüş API'si yok (metals.live→kapalı,
+    // goldprice.org→403, Yahoo→401). Oran tarihsel olarak 80–105 arası
+    // değişir; 90 makul bir ortalama.
+    const GOLD_SILVER_RATIO = 90;
+    const silverOzUSD   = goldOzUSD / GOLD_SILVER_RATIO;
     const silverGramUSD = silverOzUSD / TROY_OZ_TO_GRAM;
 
     const metals = {

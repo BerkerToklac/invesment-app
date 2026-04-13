@@ -8,8 +8,19 @@ const KEYS = {
 
 export const StorageService = {
   // Auth
-  async saveUser(email) {
-    await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify({ email, loggedAt: new Date().toISOString() }));
+  async saveUser(userData) {
+    const data =
+      typeof userData === 'string'
+        ? { email: userData, loggedAt: new Date().toISOString() }
+        : userData;
+    await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify(data));
+  },
+
+  async updateUser(updates) {
+    const current = await this.getUser();
+    const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
+    await AsyncStorage.setItem(KEYS.AUTH_USER, JSON.stringify(updated));
+    return updated;
   },
 
   async getUser() {
@@ -19,6 +30,10 @@ export const StorageService = {
 
   async removeUser() {
     await AsyncStorage.removeItem(KEYS.AUTH_USER);
+  },
+
+  async deleteAllData() {
+    await AsyncStorage.multiRemove([KEYS.AUTH_USER, KEYS.PORTFOLIO, KEYS.SETTINGS]);
   },
 
   // Portfolio Holdings
@@ -65,11 +80,7 @@ export const StorageService = {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
     return data
       ? JSON.parse(data)
-      : {
-          displayCurrency: 'USD',
-          showTRY: true,
-          notifications: true,
-        };
+      : { displayCurrency: 'USD', showTRY: true, notifications: true };
   },
 
   async saveSettings(settings) {

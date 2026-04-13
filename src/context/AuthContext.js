@@ -22,10 +22,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email) => {
-    const userData = { email, loggedAt: new Date().toISOString() };
-    await StorageService.saveUser(email);
+  // email zorunlu, name/age onboarding'den gelir
+  const login = async (email, name = null, age = null) => {
+    const userData = {
+      email,
+      name,
+      age,
+      loggedAt: new Date().toISOString(),
+    };
+    await StorageService.saveUser(userData);
     setUser(userData);
+  };
+
+  const updateProfile = async (name, age) => {
+    const updated = await StorageService.updateUser({ name, age });
+    setUser(updated);
   };
 
   const logout = async () => {
@@ -33,8 +44,13 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const deleteAccount = async () => {
+    await StorageService.deleteAllData();
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, updateProfile, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

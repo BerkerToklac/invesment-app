@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import { StorageService } from '../services/storage';
 
 const OTP_LENGTH = 6;
 // Demo mode: any 6-digit code works
@@ -81,9 +82,15 @@ export default function OTPScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      // Simulate verification delay
       await new Promise((r) => setTimeout(r, 800));
-      await login(email);
+      // Daha önce kayıt olmuş ve profilini tamamlamış kullanıcı mı?
+      const existing = await StorageService.getUser();
+      if (existing && existing.email === email && existing.name) {
+        await login(email, existing.name, existing.age);
+      } else {
+        // Yeni kullanıcı → Onboarding
+        navigation.replace('Onboarding', { email });
+      }
     } catch (e) {
       Alert.alert('Hata', 'Doğrulama başarısız. Lütfen tekrar deneyin.');
       setLoading(false);

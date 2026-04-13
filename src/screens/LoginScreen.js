@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,36 +9,84 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 
-// Simple email regex
+const { width } = Dimensions.get('window');
+
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-// Simulate sending OTP (in real app, call your backend)
-const sendOTP = async (email) => {
-  return new Promise((resolve) => setTimeout(resolve, 800));
-};
+const sendOTP = async () => new Promise((r) => setTimeout(r, 900));
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
+
+  // Animasyonlar
+  const focusBorder = useRef(new Animated.Value(0)).current;
+  const iconScale  = useRef(new Animated.Value(0.85)).current;
+  const iconOpacity = useRef(new Animated.Value(0)).current;
+  const titleY     = useRef(new Animated.Value(20)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const inputY     = useRef(new Animated.Value(30)).current;
+  const inputOpacity = useRef(new Animated.Value(0)).current;
+  const btnOpacity  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(iconScale,   { toValue: 1, friction: 5, useNativeDriver: true }),
+        Animated.timing(iconOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.spring(titleY, { toValue: 0, friction: 7, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(inputOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(inputY, { toValue: 0, friction: 7, useNativeDriver: true }),
+      ]),
+      Animated.timing(btnOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const handleFocus = () => {
+    setFocused(true);
+    Animated.timing(focusBorder, { toValue: 1, duration: 220, useNativeDriver: false }).start();
+  };
+  const handleBlur = () => {
+    setFocused(false);
+    Animated.timing(focusBorder, { toValue: 0, duration: 220, useNativeDriver: false }).start();
+  };
+
+  const borderColor = focusBorder.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.85)'],
+  });
+  const inputBg = focusBorder.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.16)'],
+  });
+
+  const isReady = isValidEmail(email.trim());
 
   const handleContinue = async () => {
-    if (!isValidEmail(email.trim())) {
+    if (!isReady) {
       Alert.alert('Geçersiz Email', 'Lütfen geçerli bir email adresi girin.');
       return;
     }
-
     setLoading(true);
     try {
-      await sendOTP(email.trim().toLowerCase());
+      await sendOTP();
       navigation.navigate('OTP', { email: email.trim().toLowerCase() });
-    } catch (e) {
+    } catch {
       Alert.alert('Hata', 'Kod gönderilemedi. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
@@ -46,83 +94,118 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <LinearGradient colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]} style={styles.gradient}>
+    <LinearGradient
+      colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
+      style={styles.gradient}
+    >
+      {/* dekoratif daireler */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+
+      {/* Geri butonu */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
-        style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}
+        style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Logo / Brand */}
-        <View style={styles.brandSection}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="trending-up" size={36} color={Colors.primary} />
-          </View>
-          <Text style={styles.appName}>Portföy</Text>
-          <Text style={styles.tagline}>Yatırımlarını Akıllıca Takip Et</Text>
-        </View>
+        <View style={[styles.inner, { paddingBottom: insets.bottom + 32 }]}>
 
-        {/* Form */}
-        <View style={styles.formSection}>
-          <View style={styles.card}>
-            <Text style={styles.welcomeTitle}>Hoş Geldin</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Email adresinle giriş yap. Sana bir doğrulama kodu göndereceğiz.
+          {/* İkon */}
+          <Animated.View style={[styles.iconWrap, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="mail" size={32} color={Colors.primary} />
+            </View>
+            {/* Parlama halkası */}
+            <View style={styles.iconRing} />
+          </Animated.View>
+
+          {/* Başlık */}
+          <Animated.View style={{ opacity: titleOpacity, transform: [{ translateY: titleY }], alignItems: 'center' }}>
+            <Text style={styles.title}>Email adresiniz</Text>
+            <Text style={styles.subtitle}>
+              Size bir doğrulama kodu göndereceğiz.{'\n'}Şifre hatırlamak yok.
             </Text>
+          </Animated.View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color={Colors.textLight} style={styles.inputIcon} />
+          {/* Input */}
+          <Animated.View style={{ opacity: inputOpacity, transform: [{ translateY: inputY }], width: '100%' }}>
+            <Animated.View style={[styles.inputWrap, { borderColor, backgroundColor: inputBg }]}>
+              <Ionicons
+                name="mail-outline"
+                size={19}
+                color={focused ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)'}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
-                placeholder="Email adresin"
-                placeholderTextColor={Colors.textLight}
+                placeholder="ornek@email.com"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 value={email}
                 onChangeText={setEmail}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
                 returnKeyType="done"
                 onSubmitEditing={handleContinue}
+                selectionColor="rgba(255,255,255,0.8)"
               />
-            </View>
+              {/* Geçerli email checkmark */}
+              {isReady && (
+                <View style={styles.validBadge}>
+                  <Ionicons name="checkmark" size={14} color={Colors.success} />
+                </View>
+              )}
+            </Animated.View>
 
+            {/* Alt hint */}
+            <Text style={styles.inputHint}>
+              {focused
+                ? 'Kodu email kutunuzda arayın.'
+                : 'Gerçek bir email adresi kullanın.'}
+            </Text>
+          </Animated.View>
+
+          {/* Buton */}
+          <Animated.View style={{ opacity: btnOpacity, width: '100%' }}>
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.btn, !isReady && styles.btnDisabled]}
               onPress={handleContinue}
-              disabled={loading}
-              activeOpacity={0.85}
+              disabled={loading || !isReady}
+              activeOpacity={0.88}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={Colors.primary} />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Devam Et</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                  <Text style={[styles.btnText, !isReady && styles.btnTextDisabled]}>
+                    Devam Et
+                  </Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={19}
+                    color={isReady ? Colors.primary : 'rgba(100,116,139,0.6)'}
+                  />
                 </>
               )}
             </TouchableOpacity>
+          </Animated.View>
 
-            <Text style={styles.termsText}>
-              Devam ederek{' '}
-              <Text style={styles.termsLink}>Kullanım Şartlarını</Text>
-              {' '}ve{' '}
-              <Text style={styles.termsLink}>Gizlilik Politikasını</Text>
-              {' '}kabul etmiş olursunuz.
+          {/* Güvenlik notu */}
+          <View style={styles.securityRow}>
+            <Ionicons name="shield-checkmark-outline" size={14} color="rgba(255,255,255,0.45)" />
+            <Text style={styles.securityText}>
+              Verileriniz yalnızca cihazınızda saklanır
             </Text>
           </View>
-        </View>
 
-        {/* Features */}
-        <View style={styles.featuresRow}>
-          {[
-            { icon: 'shield-checkmark-outline', text: 'Güvenli' },
-            { icon: 'flash-outline', text: 'Anlık Kurlar' },
-            { icon: 'bar-chart-outline', text: 'Detaylı Analiz' },
-          ].map((f) => (
-            <View key={f.icon} style={styles.featureItem}>
-              <Ionicons name={f.icon} size={18} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.featureText}>{f.text}</Text>
-            </View>
-          ))}
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -131,15 +214,53 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { flex: 1, paddingHorizontal: 24 },
 
-  brandSection: {
-    flex: 1,
+  circle1: {
+    position: 'absolute',
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: -100,
+    right: -80,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    bottom: 60,
+    left: -60,
+  },
+
+  topBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  logoCircle: {
+
+  kav: { flex: 1 },
+  inner: {
+    flex: 1,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 28,
+  },
+
+  // İkon
+  iconWrap: { alignItems: 'center', justifyContent: 'center' },
+  iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -147,108 +268,107 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 14,
+    zIndex: 2,
   },
-  appName: {
-    fontSize: 36,
+  iconRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+
+  // Başlık
+  title: {
+    fontSize: 30,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '400',
     textAlign: 'center',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 
-  formSection: { flex: 1, justifyContent: 'center' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-
-  inputContainer: {
+  // Input
+  inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.inputBg,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-    height: 52,
+    paddingHorizontal: 16,
+    height: 58,
+    width: '100%',
   },
   inputIcon: { marginRight: 10 },
   input: {
     flex: 1,
     fontSize: 16,
-    color: Colors.textPrimary,
-    fontWeight: '500',
-  },
-
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    height: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  termsText: {
-    fontSize: 12,
-    color: Colors.textLight,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  termsLink: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-
-  featuresRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    paddingBottom: 16,
-  },
-  featureItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  featureText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
     fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  validBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.successLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 8,
+    marginLeft: 4,
+  },
+
+  // Buton
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    height: 58,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  btnDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  btnText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  btnTextDisabled: {
+    color: 'rgba(255,255,255,0.5)',
+  },
+
+  // Güvenlik notu
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  securityText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
   },
 });

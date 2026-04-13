@@ -45,7 +45,7 @@ function SectionHeader({ title }) {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { holdings, deleteHolding } = usePortfolio();
   const { prices, lastUpdated, refresh } = useMarket();
   const [showTRY, setShowTRY] = useState(true);
@@ -55,6 +55,30 @@ export default function SettingsScreen() {
       { text: 'İptal', style: 'cancel' },
       { text: 'Çıkış Yap', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Hesabı Sil',
+      'Hesabın ve tüm portföy verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz.',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Hesabı Sil',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Emin misin?',
+              'Tüm veriler cihazından silinecek.',
+              [
+                { text: 'Vazgeç', style: 'cancel' },
+                { text: 'Evet, Sil', style: 'destructive', onPress: deleteAccount },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleClearPortfolio = () => {
@@ -82,7 +106,11 @@ export default function SettingsScreen() {
     ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     : '--:--';
 
-  const userInitial = user?.email?.[0]?.toUpperCase() || 'U';
+  // İsim varsa baş harfi, yoksa email baş harfi
+  const userInitial = user?.name
+    ? user.name.trim()[0].toUpperCase()
+    : user?.email?.[0]?.toUpperCase() || 'U';
+  const displayName = user?.name || 'Kullanıcı';
 
   return (
     <View style={styles.root}>
@@ -99,8 +127,12 @@ export default function SettingsScreen() {
             <Text style={styles.avatarText}>{userInitial}</Text>
           </View>
           <View style={styles.userInfo}>
+            <Text style={styles.userName}>{displayName}</Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
-            <Text style={styles.userSub}>{holdings.length} yatırım kaydı</Text>
+            <Text style={styles.userSub}>
+              {user?.age ? `${user.age} yaşında · ` : ''}
+              {holdings.length} yatırım kaydı
+            </Text>
           </View>
           <View style={styles.verifiedBadge}>
             <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
@@ -234,11 +266,20 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* Logout */}
+        {/* Çıkış & Hesabı Sil */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
           <Text style={styles.logoutText}>Çıkış Yap</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
+          <Ionicons name="trash" size={18} color="#fff" />
+          <Text style={styles.deleteAccountText}>Hesabı Sil</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.deleteAccountWarning}>
+          Hesabını sildiğinde tüm portföy verilerin ve profil bilgilerin kalıcı olarak silinir.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -273,8 +314,9 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   userInfo: { flex: 1 },
-  userEmail: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  userSub: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
+  userName: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  userEmail: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary, marginTop: 1 },
+  userSub: { fontSize: 11, color: Colors.textLight, marginTop: 2 },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -371,4 +413,26 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
   },
   logoutText: { fontSize: 16, fontWeight: '700', color: Colors.danger },
+
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.danger,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 10,
+  },
+  deleteAccountText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  deleteAccountWarning: {
+    fontSize: 12,
+    color: Colors.textLight,
+    textAlign: 'center',
+    lineHeight: 17,
+    marginTop: 10,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
 });

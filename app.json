@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Portföy",
+    "slug": "invesment-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1F71"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.portfoy.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A1F71"
+      },
+      "package": "com.portfoy.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": []
+  }
+}

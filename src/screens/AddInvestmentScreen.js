@@ -13,6 +13,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,97 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { PREDEFINED_ASSETS } from '../utils/assets';
 import { formatUSD } from '../utils/formatters';
+
+// ── Tarih Seçici ─────────────────────────────────────────────────────────────
+function DatePickerField({ value, onChange }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [tempDate, setTempDate] = useState(value);
+
+  const formatted = value.toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const handleChange = (event, selected) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (event.type !== 'dismissed' && selected) onChange(selected);
+    } else {
+      setTempDate(selected || value);
+    }
+  };
+
+  const handleConfirm = () => {
+    onChange(tempDate);
+    setShowPicker(false);
+  };
+
+  return (
+    <>
+      {/* Seçici buton */}
+      <TouchableOpacity style={styles.dateTrigger} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
+        <View style={styles.dateTriggerLeft}>
+          <View style={styles.dateTriggerIcon}>
+            <Ionicons name="calendar" size={18} color={Colors.primary} />
+          </View>
+          <Text style={styles.dateTriggerText}>{formatted}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
+      </TouchableOpacity>
+
+      {/* iOS → alt sheet modal */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={showPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.dateOverlay}
+            activeOpacity={1}
+            onPress={() => setShowPicker(false)}
+          />
+          <View style={styles.dateSheet}>
+            <View style={styles.dateSheetHandle} />
+            <View style={styles.dateSheetHeader}>
+              <TouchableOpacity onPress={() => setShowPicker(false)} style={styles.dateSheetBtn}>
+                <Text style={styles.dateSheetCancel}>İptal</Text>
+              </TouchableOpacity>
+              <Text style={styles.dateSheetTitle}>Tarih Seç</Text>
+              <TouchableOpacity onPress={handleConfirm} style={styles.dateSheetBtn}>
+                <Text style={styles.dateSheetConfirm}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleChange}
+              maximumDate={new Date()}
+              minimumDate={new Date(2000, 0, 1)}
+              locale="tr-TR"
+              style={{ width: '100%' }}
+            />
+          </View>
+        </Modal>
+      )}
+
+      {/* Android → native dialog */}
+      {Platform.OS === 'android' && showPicker && (
+        <DateTimePicker
+          value={value}
+          mode="date"
+          display="default"
+          onChange={handleChange}
+          maximumDate={new Date()}
+          minimumDate={new Date(2000, 0, 1)}
+        />
+      )}
+    </>
+  );
+}
 
 function AssetPickerModal({ visible, onClose, onSelect, currentId }) {
   const [search, setSearch] = useState('');
@@ -104,7 +196,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date());
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [customName, setCustomName] = useState('');
@@ -151,7 +243,7 @@ export default function AddInvestmentScreen({ navigation }) {
         type: selectedAsset.type,
         emoji: selectedAsset.emoji,
         color: selectedAsset.color,
-        date,
+        date: date.toISOString().split('T')[0],
         amount: parseFloat(amount),
         buyPriceUSD: parseFloat(buyPrice),
         notes: '',
@@ -239,14 +331,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
           {/* Date */}
           <FormRow label="Alış Tarihi *">
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={Colors.textLight}
-              value={date}
-              onChangeText={(v) => setDate(v)}
-              keyboardType="numbers-and-punctuation"
-            />
+            <DatePickerField value={date} onChange={setDate} />
           </FormRow>
 
           {/* Amount */}
@@ -495,4 +580,83 @@ const styles = StyleSheet.create({
   assetItemInfo: { flex: 1 },
   assetItemName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   assetItemSub: { fontSize: 12, color: Colors.textLight, marginTop: 2, textTransform: 'capitalize' },
+
+  // ── Tarih Seçici ──────────────────────────────────────────────────────────
+  dateTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.cardBg,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  dateTriggerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dateTriggerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateTriggerText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+
+  // iOS bottom sheet
+  dateOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  dateSheet: {
+    backgroundColor: Colors.cardBg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  dateSheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  dateSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  dateSheetBtn: { minWidth: 50 },
+  dateSheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  dateSheetCancel: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  dateSheetConfirm: {
+    fontSize: 15,
+    color: Colors.primary,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
 });

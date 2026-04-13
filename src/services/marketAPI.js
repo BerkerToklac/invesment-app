@@ -31,10 +31,14 @@ export const MarketAPI = {
       });
       if (!res.ok) throw new Error('Frankfurter API error');
       const data = await res.json();
+      // API from=USD döndürür: data.rates.EUR = "1 USD kaç EUR"
+      // Biz eurUsd olarak "1 EUR kaç USD" istiyoruz → tersini alıyoruz
+      const eurPerUsd = data.rates?.EUR;
+      const tryPerUsd = data.rates?.TRY;
       return {
-        usdTry: data.rates?.TRY || FALLBACK_PRICES.usdTry,
-        eurUsd: data.rates?.EUR || FALLBACK_PRICES.eurUsd,
-        eurTry: (data.rates?.EUR || FALLBACK_PRICES.eurUsd) * (data.rates?.TRY || FALLBACK_PRICES.usdTry),
+        usdTry: tryPerUsd || FALLBACK_PRICES.usdTry,
+        eurUsd: eurPerUsd ? 1 / eurPerUsd : FALLBACK_PRICES.eurUsd,
+        eurTry: eurPerUsd && tryPerUsd ? tryPerUsd / eurPerUsd : FALLBACK_PRICES.eurTry,
       };
     } catch (e) {
       console.warn('Forex fetch failed, using fallback:', e.message);

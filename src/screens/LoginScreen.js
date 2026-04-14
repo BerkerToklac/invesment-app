@@ -144,7 +144,7 @@ export default function LoginScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="ornek@email.com"
-                placeholderTextColor="rgba(255,255,255,0.35)"
+                placeholderTextColor="rgba(255,255,255,0.58)"
                 value={email}
                 onChangeText={setEmail}
                 onFocus={handleFocus}
@@ -293,10 +293,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.65)',
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.84)',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
+    fontWeight: '500',
   },
 
   // Input
@@ -326,10 +327,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inputHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
     marginTop: 8,
     marginLeft: 4,
+    fontWeight: '500',
   },
 
   // Buton
@@ -368,7 +370,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   securityText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '500',
   },
 });

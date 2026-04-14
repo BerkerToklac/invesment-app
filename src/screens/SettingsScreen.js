@@ -157,7 +157,10 @@ export default function SettingsScreen() {
               </View>
             }
           />
-          <View style={styles.divider} />
+        </View>
+
+        <SectionHeader title={t('currency')} />
+        <View style={styles.card}>
           <SettingRow
             icon="globe-outline"
             iconColor={Colors.success}
@@ -165,10 +168,7 @@ export default function SettingsScreen() {
             label={t('base_currency')}
             sub={t('base_currency_fixed')}
           />
-        </View>
-
-        <SectionHeader title={t('currency')} />
-        <View style={styles.card}>
+          <View style={styles.divider} />
           <SettingRow
             icon="flag-outline"
             iconColor={Colors.danger}

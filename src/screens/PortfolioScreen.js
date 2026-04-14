@@ -89,6 +89,31 @@ function StatCard({ label, value, valueColor, sub, icon, iconColor, iconBg }) {
   );
 }
 
+function CategoryRow({ label, usdValue, localValue, percent, color, icon }) {
+  return (
+    <View style={styles.categoryRow}>
+      <View style={styles.categoryRowTop}>
+        <View style={styles.categoryRowLeft}>
+          <View style={[styles.categoryIcon, { backgroundColor: `${color}20` }]}>
+            <Ionicons name={icon} size={16} color={color} />
+          </View>
+          <View>
+            <Text style={styles.categoryLabel}>{label}</Text>
+            <Text style={styles.categorySubValue}>{localValue}</Text>
+          </View>
+        </View>
+        <View style={styles.categoryRight}>
+          <Text style={styles.categoryValue}>{usdValue}</Text>
+          <Text style={styles.categoryPercent}>{percent.toFixed(1)}%</Text>
+        </View>
+      </View>
+      <View style={styles.categoryBarTrack}>
+        <View style={[styles.categoryBarFill, { width: `${Math.max(percent, 4)}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
 function HoldingRow({ holding, onDelete }) {
   const pl = holding.plUSD || 0;
   const plPct = holding.plPercent || 0;
@@ -175,6 +200,28 @@ export default function PortfolioScreen({ navigation }) {
     value: g.totalCurrentUSD,
     color: g.color,
   }));
+  const categoryData = useMemo(() => {
+    const categories = {
+      forex: { key: 'forex', label: t('forex'), color: '#16A34A', icon: 'cash-outline', totalUSD: 0 },
+      metals: { key: 'metals', label: t('metals'), color: '#D4A017', icon: 'diamond-outline', totalUSD: 0 },
+      crypto: { key: 'crypto', label: t('crypto'), color: '#0EA5E9', icon: 'logo-bitcoin', totalUSD: 0 },
+    };
+
+    grouped.forEach((item) => {
+      if (item.type === 'forex') categories.forex.totalUSD += item.totalCurrentUSD;
+      else if (item.type === 'crypto') categories.crypto.totalUSD += item.totalCurrentUSD;
+      else if (item.type === 'gold' || item.type === 'silver') categories.metals.totalUSD += item.totalCurrentUSD;
+    });
+
+    return Object.values(categories)
+      .filter((item) => item.totalUSD > 0)
+      .map((item) => ({
+        ...item,
+        percent: totalCurrentUSD > 0 ? (item.totalUSD / totalCurrentUSD) * 100 : 0,
+        totalLocal: formatCurrency(convertUSDToCurrency(item.totalUSD, localCurrency, prices), localCurrency),
+      }))
+      .sort((a, b) => b.totalUSD - a.totalUSD);
+  }, [grouped, localCurrency, prices, t, totalCurrentUSD]);
   const isPositive = totalPLUSD >= 0;
 
   if (holdings.length === 0) {
@@ -277,6 +324,24 @@ export default function PortfolioScreen({ navigation }) {
             iconBg={Colors.accentLight}
           />
         </ScrollView>
+
+        <View style={styles.categoryCard}>
+          <View style={styles.categoryCardHeader}>
+            <Text style={styles.chartTitle}>{t('category_distribution')}</Text>
+            <Text style={styles.categoryCardSub}>{t('share_of_portfolio')}</Text>
+          </View>
+          {categoryData.map((item) => (
+            <CategoryRow
+              key={item.key}
+              label={item.label}
+              usdValue={formatUSD(item.totalUSD)}
+              localValue={item.totalLocal}
+              percent={item.percent}
+              color={item.color}
+              icon={item.icon}
+            />
+          ))}
+        </View>
 
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>{t('distribution')}</Text>
@@ -507,6 +572,86 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  categoryCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  categoryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  categoryCardSub: {
+    fontSize: 11,
+    color: Colors.textLight,
+    fontWeight: '600',
+  },
+  categoryRow: {
+    marginBottom: 12,
+  },
+  categoryRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 12,
+  },
+  categoryRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  categoryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  categorySubValue: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  categoryRight: {
+    alignItems: 'flex-end',
+  },
+  categoryValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  categoryPercent: {
+    fontSize: 12,
+    color: Colors.textLight,
+    marginTop: 1,
+  },
+  categoryBarTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: Colors.borderLight,
+    overflow: 'hidden',
+  },
+  categoryBarFill: {
+    height: '100%',
+    borderRadius: 999,
   },
   chartTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
   chartContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },

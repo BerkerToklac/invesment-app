@@ -29,24 +29,12 @@ export const formatCrypto = (value) => {
 
 const TZ = 'Europe/Istanbul';
 
-/**
- * Date nesnesini "YYYY-MM-DD" olarak Istanbul saatiyle kaydeder.
- * toISOString() UTC'ye çevirdiği için gece yarısı seçimleri
- * bir gün kayabilir — bu fonksiyon bunu önler.
- */
 export const toIstanbulDateStr = (date) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(date);
-// en-CA locale'i doğrudan YYYY-MM-DD döndürür.
 
-/**
- * Tarih stringini Türkçe gün.ay.yıl formatında gösterir.
- * "2026-04-13" gibi date-only stringleri UTC olarak parse edilir
- * bu yüzden parçalara ayırıp yerel Date oluşturuyoruz.
- */
 export const formatDate = (dateString) => {
   if (!dateString) return '';
   const [year, month, day] = dateString.split('-').map(Number);
-  // UTC offset sorununu önlemek için local Date oluştur
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString('tr-TR', {
     day: '2-digit',
@@ -55,10 +43,6 @@ export const formatDate = (dateString) => {
   });
 };
 
-/**
- * Date nesnesini Istanbul saatiyle uzun Türkçe formatta gösterir.
- * Örn: "13 Nisan 2026"
- */
 export const formatDateLong = (date) =>
   new Intl.DateTimeFormat('tr-TR', {
     timeZone: TZ,

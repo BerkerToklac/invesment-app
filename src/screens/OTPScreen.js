@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   },
   otpInputFilled: {
     borderColor: Colors.primary,
-    backgroundColor: '#F0F2FF',
+    backgroundColor: Colors.accentLight,
   },
   otpInputDisabled: { opacity: 0.6 },
 

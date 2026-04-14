@@ -143,6 +143,8 @@ export const MarketAPI = {
     const mapping = {
       'gold-gram':   prices.metals?.goldGramUSD,
       'silver-gram': prices.metals?.silverGramUSD,
+      'gold-oz':     prices.metals?.goldOzUSD,
+      'silver-oz':   prices.metals?.silverOzUSD,
       bitcoin:       prices.crypto?.bitcoin?.usd,
       btc:           prices.crypto?.bitcoin?.usd,
       ethereum:      prices.crypto?.ethereum?.usd,

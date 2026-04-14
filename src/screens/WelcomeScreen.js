@@ -25,7 +25,7 @@ const FEATURES = [
   {
     icon: 'pie-chart-outline',
     color: Colors.primaryLight,
-    bg: '#E0E7FF',
+    bg: Colors.accentLight,
     title: 'Portföy Analizi',
     desc: 'Yatırımlarının dağılımını, maliyetini ve kar/zararını görselleştir.',
   },

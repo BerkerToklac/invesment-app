@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -22,14 +22,15 @@ import { Colors } from '../theme/colors';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { PREDEFINED_ASSETS } from '../utils/assets';
-import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
+import { formatTRY, formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
 
-// ── Tarih Seçici ─────────────────────────────────────────────────────────────
+const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
+const FOREX_PRICE_CURRENCIES = ['USD', 'EUR', 'TRY'];
+
 function DatePickerField({ value, onChange }) {
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState(value);
 
-  // Istanbul saatiyle Türkçe uzun format: "13 Nisan 2026"
   const formatted = formatDateLong(value);
 
   const handleChange = (event, selected) => {
@@ -48,7 +49,6 @@ function DatePickerField({ value, onChange }) {
 
   return (
     <>
-      {/* Seçici buton */}
       <TouchableOpacity style={styles.dateTrigger} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
         <View style={styles.dateTriggerLeft}>
           <View style={styles.dateTriggerIcon}>
@@ -59,7 +59,6 @@ function DatePickerField({ value, onChange }) {
         <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
       </TouchableOpacity>
 
-      {/* iOS → alt sheet modal */}
       {Platform.OS === 'ios' && (
         <Modal
           visible={showPicker}
@@ -97,7 +96,6 @@ function DatePickerField({ value, onChange }) {
         </Modal>
       )}
 
-      {/* Android → native dialog */}
       {Platform.OS === 'android' && showPicker && (
         <DateTimePicker
           value={value}
@@ -112,17 +110,17 @@ function DatePickerField({ value, onChange }) {
   );
 }
 
-function AssetPickerModal({ visible, onClose, onSelect, currentId }) {
+function AssetPickerModal({ visible, onClose, onSelect, currentId, assets }) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(
     () =>
-      PREDEFINED_ASSETS.filter(
+      assets.filter(
         (a) =>
           a.name.toLowerCase().includes(search.toLowerCase()) ||
           (a.shortName || '').toLowerCase().includes(search.toLowerCase())
       ),
-    [search]
+    [assets, search]
   );
 
   return (
@@ -143,7 +141,6 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId }) {
             placeholderTextColor={Colors.textLight}
             value={search}
             onChangeText={setSearch}
-            autoFocus
           />
         </View>
 
@@ -164,7 +161,6 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId }) {
               </View>
               <View style={styles.assetItemInfo}>
                 <Text style={styles.assetItemName}>{item.name}</Text>
-                <Text style={styles.assetItemSub}>{item.shortName} · {item.type}</Text>
               </View>
               {item.id === currentId && (
                 <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
@@ -186,40 +182,80 @@ function FormRow({ label, children }) {
   );
 }
 
+function getQuoteCurrencyFactor(priceCurrency, eurUsd, usdTry) {
+  if (priceCurrency === 'EUR') return eurUsd || 1;
+  if (priceCurrency === 'TRY') return usdTry ? 1 / usdTry : 1;
+  return 1;
+}
+
+function formatMoneyByCurrency(value, priceCurrency) {
+  if (priceCurrency === 'TRY') return formatTRY(value, value < 1 ? 4 : 2);
+  if (priceCurrency === 'EUR') {
+    if (value === null || value === undefined || isNaN(value)) return '€0.00';
+    return `€${Number(value).toLocaleString('de-DE', {
+      minimumFractionDigits: value < 1 ? 4 : 2,
+      maximumFractionDigits: value < 1 ? 4 : 2,
+    })}`;
+  }
+  return formatUSD(value, value < 1 ? 4 : 2);
+}
+
+function getCurrencySymbol(priceCurrency) {
+  if (priceCurrency === 'TRY') return '₺';
+  if (priceCurrency === 'EUR') return '€';
+  return '$';
+}
+
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { addHolding } = usePortfolio();
-  const { getAssetPrice } = useMarket();
+  const { getAssetPrice, prices } = useMarket();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [date, setDate] = useState(new Date());
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
-  const [customName, setCustomName] = useState('');
+  const [priceCurrency, setPriceCurrency] = useState('USD');
   const [loading, setLoading] = useState(false);
 
-  const currentMarketPrice = selectedAsset ? getAssetPrice(selectedAsset.id) : null;
+  const eurUsd = prices?.forex?.eurUsd || 1.086;
+  const usdTry = prices?.forex?.usdTry || 38.5;
 
-  const totalCostUSD = useMemo(() => {
-    const a = parseFloat(amount) || 0;
-    const p = parseFloat(buyPrice) || 0;
-    return a * p;
-  }, [amount, buyPrice]);
+  const pickerAssets = useMemo(() => {
+    return HOME_ASSET_IDS
+      .map((id) => PREDEFINED_ASSETS.find((asset) => asset.id === id))
+      .filter(Boolean);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAsset) return;
+    setPriceCurrency('USD');
+    setBuyPrice('');
+  }, [selectedAsset?.id]);
+
+  const currentMarketPriceUSD = selectedAsset ? getAssetPrice(selectedAsset.id) : null;
+  const quoteFactor = getQuoteCurrencyFactor(priceCurrency, eurUsd, usdTry);
+  const currentMarketPrice = currentMarketPriceUSD ? currentMarketPriceUSD / quoteFactor : null;
+  const buyPriceNumber = parseFloat(buyPrice) || 0;
+  const buyPriceUSD = buyPriceNumber * quoteFactor;
+  const amountNumber = parseFloat(amount) || 0;
+  const totalCostInput = amountNumber * buyPriceNumber;
+  const totalCostUSD = amountNumber * buyPriceUSD;
+  const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
 
   const autofillPrice = () => {
     if (!currentMarketPrice) {
       Alert.alert('Fiyat Bulunamadı', 'Bu varlık için güncel fiyat alınamadı.');
       return;
     }
-    setBuyPrice(currentMarketPrice.toString());
+    setBuyPrice(String(Number(currentMarketPrice.toFixed(6))));
   };
 
   const validate = () => {
     if (!selectedAsset) return 'Lütfen bir varlık seçin.';
-    if (selectedAsset.id === 'custom' && !customName.trim()) return 'Lütfen varlık adı girin.';
-    if (!amount || parseFloat(amount) <= 0) return 'Geçerli bir miktar girin.';
-    if (!buyPrice || parseFloat(buyPrice) <= 0) return 'Geçerli bir alış fiyatı girin.';
+    if (!amount || amountNumber <= 0) return 'Geçerli bir miktar girin.';
+    if (!buyPrice || buyPriceNumber <= 0) return 'Geçerli bir alış fiyatı girin.';
     if (!date) return 'Tarih seçin.';
     return null;
   };
@@ -233,19 +269,20 @@ export default function AddInvestmentScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const assetName = selectedAsset.id === 'custom' ? customName.trim() : selectedAsset.name;
       await addHolding({
         assetId: selectedAsset.id,
-        assetName,
+        assetName: selectedAsset.name,
         type: selectedAsset.type,
         emoji: selectedAsset.emoji,
         color: selectedAsset.color,
         date: toIstanbulDateStr(date),
-        amount: parseFloat(amount),
-        buyPriceUSD: parseFloat(buyPrice),
+        amount: amountNumber,
+        buyPriceUSD,
+        buyPriceInput: buyPriceNumber,
+        buyPriceCurrency: priceCurrency,
         notes: '',
       });
-      Alert.alert('Başarılı', `${assetName} portföyüne eklendi.`, [
+      Alert.alert('Başarılı', `${selectedAsset.name} portföyüne eklendi.`, [
         { text: 'Tamam', onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
@@ -257,7 +294,6 @@ export default function AddInvestmentScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
       <LinearGradient
         colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
         style={[styles.header, { paddingTop: insets.top + 12 }]}
@@ -277,10 +313,9 @@ export default function AddInvestmentScreen({ navigation }) {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 32 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Asset Picker */}
           <FormRow label="Varlık *">
             <TouchableOpacity style={styles.assetPickerBtn} onPress={() => setPickerVisible(true)}>
               {selectedAsset ? (
@@ -290,7 +325,7 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                   <View>
                     <Text style={styles.assetPickerName}>{selectedAsset.name}</Text>
-                    <Text style={styles.assetPickerType}>{selectedAsset.type}</Text>
+                    <Text style={styles.assetPickerType}>{selectedAsset.shortName}</Text>
                   </View>
                 </View>
               ) : (
@@ -300,25 +335,11 @@ export default function AddInvestmentScreen({ navigation }) {
             </TouchableOpacity>
           </FormRow>
 
-          {/* Custom name input */}
-          {selectedAsset?.id === 'custom' && (
-            <FormRow label="Varlık Adı *">
-              <TextInput
-                style={styles.input}
-                placeholder="Örn: BIST Hisse, Fon..."
-                placeholderTextColor={Colors.textLight}
-                value={customName}
-                onChangeText={setCustomName}
-              />
-            </FormRow>
-          )}
-
-          {/* Current Market Price info */}
           {selectedAsset && currentMarketPrice && (
             <View style={styles.marketPriceInfo}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
               <Text style={styles.marketPriceText}>
-                Güncel fiyat: <Text style={styles.marketPriceVal}>{formatUSD(currentMarketPrice)}</Text>
+                Güncel fiyat: <Text style={styles.marketPriceVal}>{formatMoneyByCurrency(currentMarketPrice, priceCurrency)}</Text>
               </Text>
               <TouchableOpacity style={styles.autofillBtn} onPress={autofillPrice}>
                 <Text style={styles.autofillText}>Kullan</Text>
@@ -326,16 +347,14 @@ export default function AddInvestmentScreen({ navigation }) {
             </View>
           )}
 
-          {/* Date */}
           <FormRow label="Alış Tarihi *">
             <DatePickerField value={date} onChange={setDate} />
           </FormRow>
 
-          {/* Amount */}
           <FormRow label="Miktar *">
             <View style={styles.inputWithSuffix}>
               <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                style={[styles.input, styles.borderlessInput]}
                 placeholder="0.00"
                 placeholderTextColor={Colors.textLight}
                 value={amount}
@@ -350,14 +369,29 @@ export default function AddInvestmentScreen({ navigation }) {
             </View>
           </FormRow>
 
-          {/* Buy Price */}
-          <FormRow label="Alış Fiyatı (USD) *">
+          <FormRow label={`Alış Fiyatı (${priceCurrency}) *`}>
+            {selectedAsset && (
+              <View style={styles.currencyTabs}>
+                {FOREX_PRICE_CURRENCIES.map((currency) => (
+                  <TouchableOpacity
+                    key={currency}
+                    style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
+                    onPress={() => setPriceCurrency(currency)}
+                  >
+                    <Text style={[styles.currencyTabText, priceCurrency === currency && styles.currencyTabTextActive]}>
+                      {currency}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <View style={styles.inputWithSuffix}>
               <View style={styles.inputPrefix}>
-                <Text style={styles.inputPrefixText}>$</Text>
+                <Text style={styles.inputPrefixText}>{getCurrencySymbol(priceCurrency)}</Text>
               </View>
               <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }]}
+                style={[styles.input, styles.borderlessInput, styles.noLeftRadius]}
                 placeholder="0.00"
                 placeholderTextColor={Colors.textLight}
                 value={buyPrice}
@@ -367,41 +401,40 @@ export default function AddInvestmentScreen({ navigation }) {
             </View>
           </FormRow>
 
-          {/* Total Cost Preview */}
-          {totalCostUSD > 0 && (
-            <View style={styles.totalPreview}>
-              <Text style={styles.totalPreviewLabel}>Toplam Maliyet</Text>
-              <Text style={styles.totalPreviewValue}>{formatUSD(totalCostUSD)}</Text>
-              {currentMarketPrice && (
-                <Text style={styles.totalPreviewSub}>
-                  Güncel değer: {formatUSD(parseFloat(amount || 0) * currentMarketPrice)}
-                </Text>
-              )}
-            </View>
-          )}
+          <View style={styles.footerSection}>
+            {totalCostUSD > 0 && (
+              <View style={styles.totalPreview}>
+                <Text style={styles.totalPreviewLabel}>Toplam Maliyet</Text>
+                <Text style={styles.totalPreviewValue}>{formatMoneyByCurrency(totalCostInput, priceCurrency)}</Text>
+                <Text style={styles.totalPreviewSub}>USD karşılığı: {formatUSD(totalCostUSD)}</Text>
+                {currentMarketPriceUSD ? (
+                  <Text style={styles.totalPreviewSub}>Güncel değer: {formatUSD(currentValueUSD)}</Text>
+                ) : null}
+              </View>
+            )}
 
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
-              style={styles.saveBtnGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+            <TouchableOpacity
+              style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+              onPress={handleSave}
+              disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.saveBtnText}>Portföye Ekle</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                style={styles.saveBtnGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.saveBtnText}>Portföye Ekle</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -410,6 +443,7 @@ export default function AddInvestmentScreen({ navigation }) {
         onClose={() => setPickerVisible(false)}
         onSelect={setSelectedAsset}
         currentId={selectedAsset?.id}
+        assets={pickerAssets}
       />
     </View>
   );
@@ -433,7 +467,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 20 },
 
   formRow: { marginBottom: 16 },
-  formLabel: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  formLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 
   input: {
     backgroundColor: Colors.cardBg,
@@ -446,6 +487,16 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: '500',
     marginBottom: 0,
+  },
+  borderlessInput: {
+    flex: 1,
+    marginBottom: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  noLeftRadius: {
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
   },
 
   inputWithSuffix: {
@@ -473,6 +524,33 @@ const styles = StyleSheet.create({
   },
   inputPrefixText: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary },
 
+  currencyTabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  currencyTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.cardBg,
+    alignItems: 'center',
+  },
+  currencyTabActive: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.primary,
+  },
+  currencyTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  currencyTabTextActive: {
+    color: Colors.primary,
+  },
+
   assetPickerBtn: {
     backgroundColor: Colors.cardBg,
     borderRadius: 14,
@@ -494,7 +572,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F0F2FF',
+    backgroundColor: Colors.accentLight,
     borderRadius: 12,
     padding: 10,
     marginBottom: 16,
@@ -522,6 +600,10 @@ const styles = StyleSheet.create({
   totalPreviewValue: { fontSize: 28, fontWeight: '800', color: Colors.primary, marginVertical: 4 },
   totalPreviewSub: { fontSize: 13, color: Colors.textSecondary },
 
+  footerSection: {
+    marginTop: 'auto',
+    paddingTop: 12,
+  },
   saveBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 8 },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnGradient: {
@@ -533,7 +615,6 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
 
-  // Modal styles
   modalRoot: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
     flexDirection: 'row',
@@ -571,14 +652,12 @@ const styles = StyleSheet.create({
   assetItemActive: {
     borderWidth: 2,
     borderColor: Colors.primary,
-    backgroundColor: '#F0F2FF',
+    backgroundColor: Colors.accentLight,
   },
   assetItemEmoji: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   assetItemInfo: { flex: 1 },
   assetItemName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  assetItemSub: { fontSize: 12, color: Colors.textLight, marginTop: 2, textTransform: 'capitalize' },
 
-  // ── Tarih Seçici ──────────────────────────────────────────────────────────
   dateTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -595,7 +674,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F0F2FF',
+    backgroundColor: Colors.accentLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -605,7 +684,6 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  // iOS bottom sheet
   dateOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

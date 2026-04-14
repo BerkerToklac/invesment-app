@@ -95,7 +95,7 @@ export const PortfolioProvider = ({ children }) => {
             totalCurrentUSD: 0,
             avgBuyPrice: 0,
             currentPrice,
-            color: h.color || '#6366F1',
+            color: h.color || '#22C55E',
             emoji: h.emoji || '📊',
             type: h.type || 'other',
           };

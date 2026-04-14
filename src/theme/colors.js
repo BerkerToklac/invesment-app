@@ -1,8 +1,9 @@
 export const Colors = {
-  primary: '#1A1F71',
-  primaryMid: '#2D3494',
-  primaryLight: '#4C6EF5',
-  accent: '#6C63FF',
+  primary: '#166534',
+  primaryMid: '#15803D',
+  primaryLight: '#22C55E',
+  accent: '#34D399',
+  accentLight: '#D1FAE5',
 
   success: '#22C55E',
   successLight: '#DCFCE7',
@@ -14,7 +15,7 @@ export const Colors = {
   gold: '#F59E0B',
   silver: '#94A3B8',
 
-  background: '#F0F2FF',
+  background: '#F0FDF4',
   cardBg: '#FFFFFF',
 
   textPrimary: '#0F172A',
@@ -22,13 +23,13 @@ export const Colors = {
   textLight: '#94A3B8',
   textInverse: '#FFFFFF',
 
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
+  border: '#D1E7D8',
+  borderLight: '#E7F5EC',
 
-  gradientStart: '#1A1F71',
-  gradientMid: '#2D3494',
-  gradientEnd: '#4C6EF5',
+  gradientStart: '#14532D',
+  gradientMid: '#166534',
+  gradientEnd: '#22C55E',
 
   overlay: 'rgba(0,0,0,0.5)',
-  inputBg: '#F8FAFC',
+  inputBg: '#F7FCF8',
 };

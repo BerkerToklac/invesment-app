@@ -25,7 +25,7 @@ function SettingRow({ icon, iconColor, iconBg, label, sub, right, onPress, dange
       disabled={!onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <View style={[styles.settingIcon, { backgroundColor: iconBg || '#F0F2FF' }]}>
+      <View style={[styles.settingIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
         <Ionicons name={icon} size={18} color={iconColor || Colors.primary} />
       </View>
       <View style={styles.settingInfo}>
@@ -152,7 +152,7 @@ export default function SettingsScreen() {
           <SettingRow
             icon="time-outline"
             iconColor={Colors.primary}
-            iconBg="#F0F2FF"
+            iconBg={Colors.accentLight}
             label="Son Güncelleme"
             sub={`Kurlar: ${lastUpdatedStr}`}
             onPress={refresh}
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F0F2FF',
+    backgroundColor: Colors.accentLight,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,

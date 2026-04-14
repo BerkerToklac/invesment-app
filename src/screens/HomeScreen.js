@@ -24,7 +24,7 @@ function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, i
   const isPositive = change >= 0;
   return (
     <View style={styles.rateCard}>
-      <View style={[styles.rateIcon, { backgroundColor: iconBg || '#F0F2FF' }]}>
+      <View style={[styles.rateIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
         <Ionicons name={icon} size={20} color={iconColor || Colors.primary} />
       </View>
       <View style={styles.rateInfo}>
@@ -51,10 +51,10 @@ function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, i
   );
 }
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
-  const { computeStats, getGroupedHoldings } = usePortfolio();
+  const { computeStats } = usePortfolio();
   const { user } = useAuth();
 
   const getAssetPrice = (id) => {
@@ -62,6 +62,8 @@ export default function HomeScreen({ navigation }) {
     const map = {
       'gold-gram': prices.metals?.goldGramUSD,
       'silver-gram': prices.metals?.silverGramUSD,
+      'gold-oz': prices.metals?.goldOzUSD,
+      'silver-oz': prices.metals?.silverOzUSD,
       btc: prices.crypto?.bitcoin?.usd,
       eth: prices.crypto?.ethereum?.usd,
       bnb: prices.crypto?.binancecoin?.usd,
@@ -88,7 +90,10 @@ export default function HomeScreen({ navigation }) {
   const silverGramUSD = prices?.metals?.silverGramUSD || 1.04;
   const goldGramTRY = goldGramUSD * usdTry;
   const silverGramTRY = silverGramUSD * usdTry;
-  const goldOzUSD = goldGramUSD * TROY_OZ;
+  const goldOzUSD = prices?.metals?.goldOzUSD || (goldGramUSD * TROY_OZ);
+  const silverOzUSD = prices?.metals?.silverOzUSD || (silverGramUSD * TROY_OZ);
+  const goldOzTRY = goldOzUSD * usdTry;
+  const silverOzTRY = silverOzUSD * usdTry;
 
   const btcChange = prices?.crypto?.bitcoin?.change24h || 0;
   const bnbChange = prices?.crypto?.binancecoin?.change24h || 0;
@@ -106,96 +111,76 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
-      <LinearGradient
-        colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
-        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
-      >
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{userInitial}</Text>
-            </View>
-            <View>
-              <Text style={styles.headerGreeting}>Portföyüm</Text>
-              <Text style={styles.headerEmail} numberOfLines={1}>{user?.email}</Text>
-            </View>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn} onPress={refresh}>
-              <Ionicons name="refresh" size={20} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Portfolio Summary Card */}
-        <View style={styles.portfolioCard}>
-          <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
-          {loading ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: 8 }} />
-          ) : (
-            <>
-              <Text style={styles.portfolioValueUSD}>{formatUSD(totalUSD)}</Text>
-              <Text style={styles.portfolioValueTRY}>{formatTRY(totalTRY)}</Text>
-              <View style={styles.portfolioPLRow}>
-                <View
-                  style={[
-                    styles.plBadge,
-                    { backgroundColor: plUSD >= 0 ? Colors.successLight : Colors.dangerLight },
-                  ]}
-                >
-                  <Ionicons
-                    name={plUSD >= 0 ? 'trending-up' : 'trending-down'}
-                    size={13}
-                    color={plUSD >= 0 ? Colors.success : Colors.danger}
-                  />
-                  <Text style={[styles.plText, { color: plUSD >= 0 ? Colors.success : Colors.danger }]}>
-                    {plUSD >= 0 ? '+' : ''}{formatUSD(plUSD)} ({formatPercent(plPct)})
-                  </Text>
-                </View>
-                <Text style={styles.plLabel}>Toplam Kar/Zarar</Text>
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
+          style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{userInitial}</Text>
               </View>
-            </>
-          )}
-
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            {[
-              { icon: 'add-circle', label: 'Ekle', onPress: () => navigation.navigate('AddInvestment') },
-              { icon: 'swap-horizontal', label: 'Dönüştür', onPress: () => {} },
-              { icon: 'pie-chart', label: 'Portföy', onPress: () => navigation.navigate('Portföy') },
-              { icon: 'refresh-circle', label: 'Güncelle', onPress: refresh },
-            ].map((action) => (
-              <TouchableOpacity key={action.label} style={styles.actionBtn} onPress={action.onPress}>
-                <View style={styles.actionIconWrap}>
-                  <Ionicons name={action.icon} size={22} color={Colors.primary} />
-                </View>
-                <Text style={styles.actionLabel}>{action.label}</Text>
+              <View>
+                <Text style={styles.headerGreeting}>Portföyüm</Text>
+                <Text style={styles.headerEmail} numberOfLines={1}>{user?.email}</Text>
+              </View>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.iconBtn} onPress={refresh}>
+                <Ionicons name="refresh" size={20} color="rgba(255,255,255,0.9)" />
               </TouchableOpacity>
-            ))}
+              <TouchableOpacity style={styles.iconBtn}>
+                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </LinearGradient>
 
-      {/* Content */}
+          <View style={styles.portfolioCard}>
+            <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
+            {loading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginVertical: 8 }} />
+            ) : (
+              <>
+                <Text style={styles.portfolioValueUSD}>{formatUSD(totalUSD)}</Text>
+                <Text style={styles.portfolioValueTRY}>{formatTRY(totalTRY)}</Text>
+                <View style={styles.portfolioPLRow}>
+                  <View
+                    style={[
+                      styles.plBadge,
+                      { backgroundColor: plUSD >= 0 ? Colors.successLight : Colors.dangerLight },
+                    ]}
+                  >
+                    <Ionicons
+                      name={plUSD >= 0 ? 'trending-up' : 'trending-down'}
+                      size={13}
+                      color={plUSD >= 0 ? Colors.success : Colors.danger}
+                    />
+                    <Text style={[styles.plText, { color: plUSD >= 0 ? Colors.success : Colors.danger }]}>
+                      {plUSD >= 0 ? '+' : ''}{formatUSD(plUSD)} ({formatPercent(plPct)})
+                    </Text>
+                  </View>
+                  <Text style={styles.plLabel}>Toplam Kar/Zarar</Text>
+                </View>
+              </>
+            )}
+          </View>
+        </LinearGradient>
+      </View>
+
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 20 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Last updated */}
         <View style={styles.lastUpdatedRow}>
           <Ionicons name="time-outline" size={13} color={Colors.textLight} />
           <Text style={styles.lastUpdatedText}>Son güncelleme: {lastUpdatedStr}</Text>
         </View>
 
-        {/* Exchange Rates Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Döviz Kurları</Text>
           <View style={styles.liveDot} />
@@ -224,18 +209,17 @@ export default function HomeScreen({ navigation }) {
               value={`₺${eurTry.toFixed(4)}`}
               subValue={`$${eurUsd.toFixed(4)}`}
               icon="logo-euro"
-              iconColor="#3B82F6"
-              iconBg="#DBEAFE"
+              iconColor={Colors.primary}
+              iconBg={Colors.accentLight}
             />
 
-            {/* Metals Section */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Metaller</Text>
             </View>
 
             <RateCard
-              label="Altın (Gram)"
-              subLabel="Fiziki 995"
+              label="Gram Altın"
+              subLabel="995/1000"
               value={formatUSD(goldGramUSD, 2)}
               subValue={formatTRY(goldGramTRY, 2)}
               icon="diamond-outline"
@@ -243,8 +227,8 @@ export default function HomeScreen({ navigation }) {
               iconBg={Colors.warningLight}
             />
             <RateCard
-              label="Gümüş (Gram)"
-              subLabel="Spot"
+              label="Gram Gümüş"
+              subLabel="995/1000"
               value={formatUSD(silverGramUSD, 4)}
               subValue={formatTRY(silverGramTRY, 2)}
               icon="sparkles-outline"
@@ -252,15 +236,24 @@ export default function HomeScreen({ navigation }) {
               iconBg={Colors.borderLight}
             />
             <RateCard
-              label="Altın (Ons)"
+              label="Ons Altın"
               subLabel="Troy oz / USD"
               value={formatUSD(goldOzUSD, 2)}
+              subValue={formatTRY(goldOzTRY, 2)}
               icon="medal-outline"
               iconColor={Colors.gold}
               iconBg={Colors.warningLight}
             />
+            <RateCard
+              label="Ons Gümüş"
+              subLabel="Troy oz / USD"
+              value={formatUSD(silverOzUSD, 2)}
+              subValue={formatTRY(silverOzTRY, 2)}
+              icon="ellipse-outline"
+              iconColor={Colors.silver}
+              iconBg={Colors.borderLight}
+            />
 
-            {/* Crypto Section */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Kripto</Text>
             </View>
@@ -270,6 +263,7 @@ export default function HomeScreen({ navigation }) {
                 label="Bitcoin"
                 subLabel="BTC / USD"
                 value={formatUSD(prices.crypto.bitcoin.usd)}
+                subValue={formatTRY(prices.crypto.bitcoin.usd * usdTry, 2)}
                 change={btcChange}
                 icon="logo-bitcoin"
                 iconColor="#F7931A"
@@ -281,6 +275,7 @@ export default function HomeScreen({ navigation }) {
                 label="BNB"
                 subLabel="BNB / USD"
                 value={formatUSD(prices.crypto.binancecoin.usd)}
+                subValue={formatTRY(prices.crypto.binancecoin.usd * usdTry, 2)}
                 change={bnbChange}
                 icon="cube-outline"
                 iconColor="#F0B90B"
@@ -289,35 +284,14 @@ export default function HomeScreen({ navigation }) {
             )}
             {prices?.crypto?.ripple && (
               <RateCard
-                label="XRP"
+                label="Ripple"
                 subLabel="XRP / USD"
                 value={`$${prices.crypto.ripple.usd.toFixed(4)}`}
+                subValue={formatTRY(prices.crypto.ripple.usd * usdTry, 4)}
                 change={xrpChange}
                 icon="water-outline"
                 iconColor="#00AAE4"
-                iconBg="#DBEAFE"
-              />
-            )}
-            {prices?.crypto?.['pax-gold'] && (
-              <RateCard
-                label="PAX Gold"
-                subLabel="PAXG / USD"
-                value={formatUSD(prices.crypto['pax-gold'].usd)}
-                change={prices.crypto['pax-gold'].change24h}
-                icon="star-outline"
-                iconColor={Colors.gold}
-                iconBg={Colors.warningLight}
-              />
-            )}
-            {prices?.crypto?.['tether-gold'] && (
-              <RateCard
-                label="Tether Gold"
-                subLabel="XAUT / USD"
-                value={formatUSD(prices.crypto['tether-gold'].usd)}
-                change={prices.crypto['tether-gold'].change24h}
-                icon="star-outline"
-                iconColor={Colors.gold}
-                iconBg={Colors.warningLight}
+                iconBg={Colors.accentLight}
               />
             )}
           </>
@@ -330,12 +304,19 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
 
-  headerGradient: { paddingHorizontal: 20, paddingBottom: 0 },
+  headerWrap: { marginBottom: 8 },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatarCircle: {
@@ -365,7 +346,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 20,
-    marginBottom: -20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
@@ -397,7 +377,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 4,
   },
   plBadge: {
     flexDirection: 'row',
@@ -410,25 +390,7 @@ const styles = StyleSheet.create({
   plText: { fontSize: 13, fontWeight: '700' },
   plLabel: { fontSize: 12, color: Colors.textLight },
 
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  actionBtn: { alignItems: 'center', gap: 6 },
-  actionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F0F2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
-
-  scroll: { flex: 1, paddingTop: 32, paddingHorizontal: 16 },
+  scroll: { flex: 1, paddingHorizontal: 16 },
 
   lastUpdatedRow: {
     flexDirection: 'row',

@@ -1,8 +1,8 @@
 export const PREDEFINED_ASSETS = [
   {
     id: 'gold-gram',
-    name: 'Fiziki Gram Altın',
-    shortName: 'Altın 995',
+    name: 'Gram Altın',
+    shortName: '995/1000',
     type: 'gold',
     unit: 'gram',
     coinGeckoId: null,
@@ -12,10 +12,32 @@ export const PREDEFINED_ASSETS = [
   },
   {
     id: 'silver-gram',
-    name: 'Gümüş Gram',
-    shortName: 'Gümüş',
+    name: 'Gram Gümüş',
+    shortName: '995/1000',
     type: 'silver',
     unit: 'gram',
+    coinGeckoId: null,
+    metalKey: 'silver',
+    color: '#94A3B8',
+    emoji: '🥈',
+  },
+  {
+    id: 'gold-oz',
+    name: 'Ons Altın',
+    shortName: 'XAU',
+    type: 'gold',
+    unit: 'ons',
+    coinGeckoId: null,
+    metalKey: 'gold',
+    color: '#F59E0B',
+    emoji: '🥇',
+  },
+  {
+    id: 'silver-oz',
+    name: 'Ons Gümüş',
+    shortName: 'XAG',
+    type: 'silver',
+    unit: 'ons',
     coinGeckoId: null,
     metalKey: 'silver',
     color: '#94A3B8',
@@ -39,7 +61,7 @@ export const PREDEFINED_ASSETS = [
     unit: 'ETH',
     coinGeckoId: 'ethereum',
     color: '#627EEA',
-    emoji: '⟠',
+    emoji: '⬠',
   },
   {
     id: 'bnb',
@@ -53,7 +75,7 @@ export const PREDEFINED_ASSETS = [
   },
   {
     id: 'xrp',
-    name: 'XRP',
+    name: 'Ripple',
     shortName: 'XRP',
     type: 'crypto',
     unit: 'XRP',
@@ -118,7 +140,7 @@ export const PREDEFINED_ASSETS = [
     type: 'forex',
     unit: 'EUR',
     coinGeckoId: null,
-    color: '#3B82F6',
+    color: '#10B981',
     emoji: '🇪🇺',
   },
   {
@@ -141,7 +163,7 @@ export const getAssetById = (id) => {
 
 export const getAssetColor = (assetId) => {
   const asset = getAssetById(assetId);
-  return asset ? asset.color : '#6366F1';
+  return asset ? asset.color : '#22C55E';
 };
 
 export const getAssetEmoji = (assetId) => {

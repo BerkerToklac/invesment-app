@@ -83,7 +83,7 @@ function DonutChart({ data, total, size = 180 }) {
 function StatCard({ label, value, valueColor, sub, icon, iconColor, iconBg }) {
   return (
     <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: iconBg || '#F0F2FF' }]}>
+      <View style={[styles.statIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
         <Ionicons name={icon} size={16} color={iconColor || Colors.primary} />
       </View>
       <Text style={styles.statLabel}>{label}</Text>
@@ -154,6 +154,8 @@ export default function PortfolioScreen({ navigation }) {
     const map = {
       'gold-gram': prices.metals?.goldGramUSD,
       'silver-gram': prices.metals?.silverGramUSD,
+      'gold-oz': prices.metals?.goldOzUSD,
+      'silver-oz': prices.metals?.silverOzUSD,
       btc: prices.crypto?.bitcoin?.usd,
       eth: prices.crypto?.ethereum?.usd,
       bnb: prices.crypto?.binancecoin?.usd,
@@ -249,7 +251,7 @@ export default function PortfolioScreen({ navigation }) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
         }
@@ -262,7 +264,7 @@ export default function PortfolioScreen({ navigation }) {
             value={formatUSD(totalCostUSD)}
             icon="receipt-outline"
             iconColor={Colors.primary}
-            iconBg="#F0F2FF"
+            iconBg={Colors.accentLight}
           />
           <StatCard
             label="Kar / Zarar"
@@ -286,7 +288,7 @@ export default function PortfolioScreen({ navigation }) {
             sub={`${holdings.length} pozisyon`}
             icon="layers-outline"
             iconColor={Colors.accent}
-            iconBg="#EDE9FE"
+            iconBg={Colors.accentLight}
           />
         </ScrollView>
 
@@ -394,7 +396,7 @@ export default function PortfolioScreen({ navigation }) {
 
       {/* FAB */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 72 }]}
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}
         onPress={() => navigation.navigate('AddInvestment')}
         activeOpacity={0.85}
       >

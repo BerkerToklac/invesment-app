@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../theme/colors';
@@ -22,6 +23,8 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -39,9 +42,9 @@ function MainTabs() {
           backgroundColor: Colors.cardBg,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 65,
+          paddingBottom: Math.max(insets.bottom, 10),
+          paddingTop: 10,
+          height: 56 + Math.max(insets.bottom, 10),
         },
         tabBarLabelStyle: {
           fontSize: 11,

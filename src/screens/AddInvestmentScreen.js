@@ -21,11 +21,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
+import { useSettings } from '../context/SettingsContext';
 import { PREDEFINED_ASSETS } from '../utils/assets';
-import { formatTRY, formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
+import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
+import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
 
 const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
-const FOREX_PRICE_CURRENCIES = ['USD', 'EUR', 'TRY'];
 
 function DatePickerField({ value, onChange }) {
   const [showPicker, setShowPicker] = useState(false);
@@ -60,17 +61,8 @@ function DatePickerField({ value, onChange }) {
       </TouchableOpacity>
 
       {Platform.OS === 'ios' && (
-        <Modal
-          visible={showPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <TouchableOpacity
-            style={styles.dateOverlay}
-            activeOpacity={1}
-            onPress={() => setShowPicker(false)}
-          />
+        <Modal visible={showPicker} transparent animationType="slide" onRequestClose={() => setShowPicker(false)}>
+          <TouchableOpacity style={styles.dateOverlay} activeOpacity={1} onPress={() => setShowPicker(false)} />
           <View style={styles.dateSheet}>
             <View style={styles.dateSheetHandle} />
             <View style={styles.dateSheetHeader}>
@@ -162,9 +154,7 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets }) {
               <View style={styles.assetItemInfo}>
                 <Text style={styles.assetItemName}>{item.name}</Text>
               </View>
-              {item.id === currentId && (
-                <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-              )}
+              {item.id === currentId && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
             </TouchableOpacity>
           )}
         />
@@ -182,67 +172,49 @@ function FormRow({ label, children }) {
   );
 }
 
-function getQuoteCurrencyFactor(priceCurrency, eurUsd, usdTry) {
-  if (priceCurrency === 'EUR') return eurUsd || 1;
-  if (priceCurrency === 'TRY') return usdTry ? 1 / usdTry : 1;
-  return 1;
-}
-
-function formatMoneyByCurrency(value, priceCurrency) {
-  if (priceCurrency === 'TRY') return formatTRY(value, value < 1 ? 4 : 2);
-  if (priceCurrency === 'EUR') {
-    if (value === null || value === undefined || isNaN(value)) return '€0.00';
-    return `€${Number(value).toLocaleString('de-DE', {
-      minimumFractionDigits: value < 1 ? 4 : 2,
-      maximumFractionDigits: value < 1 ? 4 : 2,
-    })}`;
-  }
-  return formatUSD(value, value < 1 ? 4 : 2);
-}
-
-function getCurrencySymbol(priceCurrency) {
-  if (priceCurrency === 'TRY') return '₺';
-  if (priceCurrency === 'EUR') return '€';
-  return '$';
-}
-
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { addHolding } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
+  const { localCurrency } = useSettings();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [date, setDate] = useState(new Date());
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
-  const [priceCurrency, setPriceCurrency] = useState('USD');
+  const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
 
-  const eurUsd = prices?.forex?.eurUsd || 1.086;
-  const usdTry = prices?.forex?.usdTry || 38.5;
+  const priceCurrencyOptions = useMemo(() => getLocalCurrencyOptions(localCurrency), [localCurrency]);
 
-  const pickerAssets = useMemo(() => {
-    return HOME_ASSET_IDS
-      .map((id) => PREDEFINED_ASSETS.find((asset) => asset.id === id))
-      .filter(Boolean);
-  }, []);
+  const pickerAssets = useMemo(
+    () => HOME_ASSET_IDS.map((id) => PREDEFINED_ASSETS.find((asset) => asset.id === id)).filter(Boolean),
+    []
+  );
+
+  useEffect(() => {
+    setPriceCurrency((current) => (priceCurrencyOptions.includes(current) ? current : localCurrency));
+  }, [localCurrency, priceCurrencyOptions]);
 
   useEffect(() => {
     if (!selectedAsset) return;
-    setPriceCurrency('USD');
+    setPriceCurrency(localCurrency);
     setBuyPrice('');
-  }, [selectedAsset?.id]);
+  }, [localCurrency, selectedAsset?.id]);
 
   const currentMarketPriceUSD = selectedAsset ? getAssetPrice(selectedAsset.id) : null;
-  const quoteFactor = getQuoteCurrencyFactor(priceCurrency, eurUsd, usdTry);
-  const currentMarketPrice = currentMarketPriceUSD ? currentMarketPriceUSD / quoteFactor : null;
+  const currentMarketPrice = currentMarketPriceUSD
+    ? (priceCurrency === 'USD' ? currentMarketPriceUSD : convertUSDToCurrency(currentMarketPriceUSD, priceCurrency, prices))
+    : null;
+  const localMarketPrice = currentMarketPriceUSD ? convertUSDToCurrency(currentMarketPriceUSD, localCurrency, prices) : null;
   const buyPriceNumber = parseFloat(buyPrice) || 0;
-  const buyPriceUSD = buyPriceNumber * quoteFactor;
+  const buyPriceUSD = convertCurrencyToUSD(buyPriceNumber, priceCurrency, prices);
   const amountNumber = parseFloat(amount) || 0;
-  const totalCostInput = amountNumber * buyPriceNumber;
   const totalCostUSD = amountNumber * buyPriceUSD;
+  const totalCostLocal = convertUSDToCurrency(totalCostUSD, localCurrency, prices);
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
+  const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
 
   const autofillPrice = () => {
     if (!currentMarketPrice) {
@@ -282,11 +254,12 @@ export default function AddInvestmentScreen({ navigation }) {
         buyPriceCurrency: priceCurrency,
         notes: '',
       });
-      Alert.alert('Başarılı', `${selectedAsset.name} portföyüne eklendi.`, [
+
+      Alert.alert('Başarılı', `${selectedAsset.name} portföye eklendi.`, [
         { text: 'Tamam', onPress: () => navigation.goBack() },
       ]);
-    } catch (e) {
-      Alert.alert('Hata', 'Yatırım eklenirken hata oluştu.');
+    } catch (error) {
+      Alert.alert('Hata', 'Yatırım eklenirken bir sorun oluştu.');
     } finally {
       setLoading(false);
     }
@@ -307,10 +280,7 @@ export default function AddInvestmentScreen({ navigation }) {
         </View>
       </LinearGradient>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 32 }}
@@ -339,8 +309,14 @@ export default function AddInvestmentScreen({ navigation }) {
             <View style={styles.marketPriceInfo}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
               <Text style={styles.marketPriceText}>
-                Güncel fiyat: <Text style={styles.marketPriceVal}>{formatMoneyByCurrency(currentMarketPrice, priceCurrency)}</Text>
+                Güncel fiyat: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
               </Text>
+              {priceCurrency !== 'USD' && currentMarketPriceUSD ? (
+                <Text style={styles.marketPriceSub}>USD: {formatUSD(currentMarketPriceUSD, currentMarketPriceUSD < 1 ? 4 : 2)}</Text>
+              ) : null}
+              {priceCurrency !== localCurrency && localMarketPrice ? (
+                <Text style={styles.marketPriceSub}>{localCurrency}: {formatCurrency(localMarketPrice, localCurrency, localMarketPrice < 1 ? 4 : 2)}</Text>
+              ) : null}
               <TouchableOpacity style={styles.autofillBtn} onPress={autofillPrice}>
                 <Text style={styles.autofillText}>Kullan</Text>
               </TouchableOpacity>
@@ -372,7 +348,7 @@ export default function AddInvestmentScreen({ navigation }) {
           <FormRow label={`Alış Fiyatı (${priceCurrency}) *`}>
             {selectedAsset && (
               <View style={styles.currencyTabs}>
-                {FOREX_PRICE_CURRENCIES.map((currency) => (
+                {priceCurrencyOptions.map((currency) => (
                   <TouchableOpacity
                     key={currency}
                     style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
@@ -405,10 +381,15 @@ export default function AddInvestmentScreen({ navigation }) {
             {totalCostUSD > 0 && (
               <View style={styles.totalPreview}>
                 <Text style={styles.totalPreviewLabel}>Toplam Maliyet</Text>
-                <Text style={styles.totalPreviewValue}>{formatMoneyByCurrency(totalCostInput, priceCurrency)}</Text>
+                <Text style={styles.totalPreviewValue}>{formatCurrency(totalCostLocal, localCurrency, totalCostLocal < 1 ? 4 : 2)}</Text>
                 <Text style={styles.totalPreviewSub}>USD karşılığı: {formatUSD(totalCostUSD)}</Text>
                 {currentMarketPriceUSD ? (
-                  <Text style={styles.totalPreviewSub}>Güncel değer: {formatUSD(currentValueUSD)}</Text>
+                  <>
+                    <Text style={styles.totalPreviewSub}>
+                      Güncel değer ({localCurrency}): {formatCurrency(currentValueLocal, localCurrency, currentValueLocal < 1 ? 4 : 2)}
+                    </Text>
+                    <Text style={styles.totalPreviewSub}>Güncel değer (USD): {formatUSD(currentValueUSD)}</Text>
+                  </>
                 ) : null}
               </View>
             )}
@@ -569,21 +550,22 @@ const styles = StyleSheet.create({
   assetPickerPlaceholder: { fontSize: 16, color: Colors.textLight },
 
   marketPriceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: Colors.accentLight,
     borderRadius: 12,
     padding: 10,
     marginBottom: 16,
+    gap: 4,
   },
-  marketPriceText: { flex: 1, fontSize: 13, color: Colors.textSecondary },
+  marketPriceText: { fontSize: 13, color: Colors.textSecondary },
   marketPriceVal: { fontWeight: '800', color: Colors.primary },
+  marketPriceSub: { fontSize: 12, color: Colors.textSecondary },
   autofillBtn: {
+    alignSelf: 'flex-start',
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    marginTop: 4,
   },
   autofillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 

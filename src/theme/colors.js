@@ -1,8 +1,8 @@
 export const Colors = {
-  primary: '#166534',
-  primaryMid: '#15803D',
-  primaryLight: '#22C55E',
-  accent: '#34D399',
+  primary: '#16A34A',
+  primaryMid: '#22C55E',
+  primaryLight: '#4ADE80',
+  accent: '#22C55E',
   accentLight: '#D1FAE5',
 
   success: '#22C55E',
@@ -26,9 +26,9 @@ export const Colors = {
   border: '#D1E7D8',
   borderLight: '#E7F5EC',
 
-  gradientStart: '#14532D',
-  gradientMid: '#166534',
-  gradientEnd: '#22C55E',
+  gradientStart: '#22C55E',
+  gradientMid: '#4ADE80',
+  gradientEnd: '#86EFAC',
 
   overlay: 'rgba(0,0,0,0.5)',
   inputBg: '#F7FCF8',

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Switch,
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +15,7 @@ import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
+import { useSettings } from '../context/SettingsContext';
 
 function SettingRow({ icon, iconColor, iconBg, label, sub, right, onPress, danger }) {
   return (
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
   const { user, logout, deleteAccount } = useAuth();
   const { holdings, deleteHolding } = usePortfolio();
   const { prices, lastUpdated, refresh } = useMarket();
-  const [showTRY, setShowTRY] = useState(true);
+  const { localCurrency, setLocalCurrency } = useSettings();
 
   const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğinden emin misin?', [
@@ -106,7 +106,6 @@ export default function SettingsScreen() {
     ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     : '--:--';
 
-  // İsim varsa baş harfi, yoksa email baş harfi
   const userInitial = user?.name
     ? user.name.trim()[0].toUpperCase()
     : user?.email?.[0]?.toUpperCase() || 'U';
@@ -114,14 +113,12 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
       <LinearGradient
         colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
         style={[styles.header, { paddingTop: insets.top + 12 }]}
       >
         <Text style={styles.pageTitle}>Hesabım</Text>
 
-        {/* User Card */}
         <View style={styles.userCard}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>{userInitial}</Text>
@@ -146,7 +143,6 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Market Info */}
         <SectionHeader title="Piyasa Bilgisi" />
         <View style={styles.card}>
           <SettingRow
@@ -177,40 +173,43 @@ export default function SettingsScreen() {
             iconColor={Colors.success}
             iconBg={Colors.successLight}
             label="Ana Para Birimi"
-            sub="USD (Dolar) — Değiştirilemez"
+            sub="USD (Dolar) · Değiştirilemez"
           />
         </View>
 
-        {/* Display Settings */}
-        <SectionHeader title="Görünüm" />
+        <SectionHeader title="Para Birimi" />
         <View style={styles.card}>
           <SettingRow
             icon="flag-outline"
             iconColor={Colors.danger}
             iconBg={Colors.dangerLight}
-            label="TRY Değerini Göster"
-            sub="Portföy değerini TL olarak da göster"
-            right={
-              <Switch
-                value={showTRY}
-                onValueChange={setShowTRY}
-                trackColor={{ false: Colors.border, true: Colors.primary }}
-                thumbColor="#fff"
-              />
-            }
+            label="Yerel Para Birimi"
+            sub="Silik değerlerde ve alt bilgilerde bu para birimi gösterilir"
           />
+          <View style={styles.currencySelector}>
+            {['TRY', 'EUR'].map((currency) => (
+              <TouchableOpacity
+                key={currency}
+                style={[styles.currencyOption, localCurrency === currency && styles.currencyOptionActive]}
+                onPress={() => setLocalCurrency(currency)}
+              >
+                <Text style={[styles.currencyOptionText, localCurrency === currency && styles.currencyOptionTextActive]}>
+                  {currency}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* API Info */}
         <SectionHeader title="Veri Kaynakları" />
         <View style={styles.card}>
           {[
             { label: 'Döviz Kurları', sub: 'Frankfurter (api.frankfurter.app)', icon: 'swap-horizontal-outline', color: Colors.primary },
-            { label: 'Altın / Gümüş', sub: 'Metals.live spot fiyatlar', icon: 'diamond-outline', color: Colors.warning },
+            { label: 'Altın / Gümüş', sub: 'Türetilmiş spot fiyatlar', icon: 'diamond-outline', color: Colors.warning },
             { label: 'Kripto Paralar', sub: 'CoinGecko (coingecko.com)', icon: 'logo-bitcoin', color: '#F7931A' },
-          ].map((item, i) => (
+          ].map((item, index) => (
             <React.Fragment key={item.label}>
-              {i > 0 && <View style={styles.divider} />}
+              {index > 0 && <View style={styles.divider} />}
               <SettingRow
                 icon={item.icon}
                 iconColor={item.color}
@@ -222,7 +221,6 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* Portfolio Actions */}
         <SectionHeader title="Portföy" />
         <View style={styles.card}>
           <SettingRow
@@ -236,15 +234,14 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* About */}
         <SectionHeader title="Uygulama" />
         <View style={styles.card}>
           {[
             { icon: 'information-circle-outline', label: 'Versiyon', sub: '1.0.0', color: Colors.primary },
             { icon: 'alert-circle-outline', label: 'Sorumluluk Reddi', sub: 'Bu uygulama yatırım tavsiyesi vermez', color: Colors.warning },
-          ].map((item, i) => (
+          ].map((item, index) => (
             <React.Fragment key={item.label}>
-              {i > 0 && <View style={styles.divider} />}
+              {index > 0 && <View style={styles.divider} />}
               <SettingRow
                 icon={item.icon}
                 iconColor={item.color}
@@ -256,17 +253,13 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* Disclaimer */}
         <View style={styles.disclaimer}>
           <Ionicons name="warning-outline" size={16} color={Colors.warning} />
           <Text style={styles.disclaimerText}>
-            Bu uygulama yalnızca kişisel takip amacıyla geliştirilmiştir. Gösterilen fiyatlar
-            bilgi amaçlıdır ve yatırım tavsiyesi niteliği taşımaz. Gerçek zamanlı fiyatlar
-            borsadan farklılık gösterebilir.
+            Bu uygulama yalnızca kişisel takip amacıyla geliştirilmiştir. Gösterilen fiyatlar bilgi amaçlıdır ve yatırım tavsiyesi niteliği taşımaz.
           </Text>
         </View>
 
-        {/* Çıkış & Hesabı Sil */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
           <Text style={styles.logoutText}>Çıkış Yap</Text>
@@ -382,6 +375,35 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   refreshChipText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+
+  currencySelector: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  currencyOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  currencyOptionActive: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.primary,
+  },
+  currencyOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  currencyOptionTextActive: {
+    color: Colors.primary,
+  },
 
   disclaimer: {
     flexDirection: 'row',

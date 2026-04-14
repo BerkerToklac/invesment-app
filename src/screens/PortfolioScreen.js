@@ -6,23 +6,20 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, G, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 
 import { Colors } from '../theme/colors';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
-import { formatUSD, formatTRY, formatPercent, formatCrypto, formatDate } from '../utils/formatters';
+import { useSettings } from '../context/SettingsContext';
+import { formatUSD, formatPercent, formatCrypto, formatDate } from '../utils/formatters';
+import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-
-// ── Donut Chart ──────────────────────────────────────────────────────────────
 function DonutChart({ data, total, size = 180 }) {
   const radius = size / 2 - 20;
   const cx = size / 2;
@@ -79,7 +76,6 @@ function DonutChart({ data, total, size = 180 }) {
   );
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, valueColor, sub, icon, iconColor, iconBg }) {
   return (
     <View style={styles.statCard}>
@@ -93,7 +89,6 @@ function StatCard({ label, value, valueColor, sub, icon, iconColor, iconBg }) {
   );
 }
 
-// ── Holding Row ───────────────────────────────────────────────────────────────
 function HoldingRow({ holding, onDelete }) {
   const pl = holding.plUSD || 0;
   const plPct = holding.plPercent || 0;
@@ -142,11 +137,11 @@ function HoldingRow({ holding, onDelete }) {
   );
 }
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function PortfolioScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { prices, refreshing, refresh } = useMarket();
   const { holdings, computeStats, getGroupedHoldings, deleteHolding } = usePortfolio();
+  const { localCurrency } = useSettings();
   const [showByAsset, setShowByAsset] = useState(true);
 
   const getAssetPrice = (id) => {
@@ -174,15 +169,12 @@ export default function PortfolioScreen({ navigation }) {
   const grouped = useMemo(() => getGroupedHoldings(getAssetPrice), [prices, getGroupedHoldings]);
   const { enrichedHoldings = [], totalCostUSD = 0, totalCurrentUSD = 0, totalPLUSD = 0, totalPLPercent = 0 } = stats || {};
 
-  const usdTry = prices?.forex?.usdTry || 38.5;
-  const totalCurrentTRY = totalCurrentUSD * usdTry;
-
+  const totalCurrentLocal = convertUSDToCurrency(totalCurrentUSD, localCurrency, prices);
   const donutData = grouped.map((g) => ({
     label: g.assetName,
     value: g.totalCurrentUSD,
     color: g.color,
   }));
-
   const isPositive = totalPLUSD >= 0;
 
   if (holdings.length === 0) {
@@ -202,10 +194,7 @@ export default function PortfolioScreen({ navigation }) {
           <Text style={styles.emptySubtitle}>
             İlk yatırımını ekleyerek portföyünü oluşturmaya başla.
           </Text>
-          <TouchableOpacity
-            style={styles.addFirstBtn}
-            onPress={() => navigation.navigate('AddInvestment')}
-          >
+          <TouchableOpacity style={styles.addFirstBtn} onPress={() => navigation.navigate('AddInvestment')}>
             <Ionicons name="add" size={20} color="#fff" />
             <Text style={styles.addFirstBtnText}>İlk Yatırımı Ekle</Text>
           </TouchableOpacity>
@@ -216,38 +205,36 @@ export default function PortfolioScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      {/* Header */}
-      <LinearGradient
-        colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
-        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
-      >
-        <View style={styles.headerRow}>
-          <Text style={styles.pageTitle}>Portföyüm</Text>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => navigation.navigate('AddInvestment')}
-          >
-            <Ionicons name="add" size={22} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Portfolio Value */}
-        <View style={styles.headerValueBox}>
-          <Text style={styles.headerValueLabel}>Toplam Değer</Text>
-          <Text style={styles.headerValueUSD}>{formatUSD(totalCurrentUSD)}</Text>
-          <Text style={styles.headerValueTRY}>{formatTRY(totalCurrentTRY)}</Text>
-          <View style={[styles.plBadge, { backgroundColor: isPositive ? Colors.successLight : Colors.dangerLight }]}>
-            <Ionicons
-              name={isPositive ? 'trending-up' : 'trending-down'}
-              size={14}
-              color={isPositive ? Colors.success : Colors.danger}
-            />
-            <Text style={[styles.plBadgeText, { color: isPositive ? Colors.success : Colors.danger }]}>
-              {isPositive ? '+' : ''}{formatUSD(totalPLUSD)} ({formatPercent(totalPLPercent)})
-            </Text>
+      <View style={styles.headerWrap}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
+          style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
+        >
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryCardTop}>
+              <Text style={styles.summaryLabel}>Toplam Portföy Değeri</Text>
+              <TouchableOpacity style={styles.refreshCardBtn} onPress={refresh}>
+                <Ionicons name="refresh" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.summaryValueUSD}>{formatUSD(totalCurrentUSD)}</Text>
+            <Text style={styles.summaryValueTRY}>{formatCurrency(totalCurrentLocal, localCurrency)}</Text>
+            <View style={styles.summaryPLRow}>
+              <View style={[styles.plBadge, { backgroundColor: isPositive ? Colors.successLight : Colors.dangerLight }]}>
+                <Ionicons
+                  name={isPositive ? 'trending-up' : 'trending-down'}
+                  size={13}
+                  color={isPositive ? Colors.success : Colors.danger}
+                />
+                <Text style={[styles.plBadgeText, { color: isPositive ? Colors.success : Colors.danger }]}>
+                  {isPositive ? '+' : ''}{formatUSD(totalPLUSD)} ({formatPercent(totalPLPercent)})
+                </Text>
+              </View>
+              <Text style={styles.plLabel}>Toplam Kar/Zarar</Text>
+            </View>
           </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.scroll}
@@ -257,7 +244,6 @@ export default function PortfolioScreen({ navigation }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Stat Cards Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
           <StatCard
             label="Maliyet"
@@ -276,8 +262,8 @@ export default function PortfolioScreen({ navigation }) {
             iconBg={isPositive ? Colors.successLight : Colors.dangerLight}
           />
           <StatCard
-            label="TRY Değeri"
-            value={formatTRY(totalCurrentTRY)}
+            label={`${localCurrency} Değeri`}
+            value={formatCurrency(totalCurrentLocal, localCurrency)}
             icon="cash-outline"
             iconColor={Colors.warning}
             iconBg={Colors.warningLight}
@@ -292,7 +278,6 @@ export default function PortfolioScreen({ navigation }) {
           />
         </ScrollView>
 
-        {/* Chart + Legend */}
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>Dağılım</Text>
           <View style={styles.chartContent}>
@@ -315,7 +300,6 @@ export default function PortfolioScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Toggle: By Asset / All Positions */}
         <View style={styles.toggleRow}>
           <TouchableOpacity
             style={[styles.toggleBtn, showByAsset && styles.toggleBtnActive]}
@@ -331,11 +315,10 @@ export default function PortfolioScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Holdings */}
         {showByAsset ? (
           <>
             {grouped.map((g) => {
-              const isUp = g.plUSD >= 0;
+              const groupUp = g.plUSD >= 0;
               return (
                 <View key={g.assetId} style={styles.groupCard}>
                   <View style={styles.groupHeader}>
@@ -350,14 +333,13 @@ export default function PortfolioScreen({ navigation }) {
                     </View>
                     <View style={styles.groupRight}>
                       <Text style={styles.groupValue}>{formatUSD(g.totalCurrentUSD)}</Text>
-                      <View style={[styles.groupPL, { backgroundColor: isUp ? Colors.successLight : Colors.dangerLight }]}>
-                        <Text style={[styles.groupPLText, { color: isUp ? Colors.success : Colors.danger }]}>
-                          {isUp ? '+' : ''}{formatUSD(g.plUSD)} ({formatPercent(g.plPercent)})
+                      <View style={[styles.groupPL, { backgroundColor: groupUp ? Colors.successLight : Colors.dangerLight }]}>
+                        <Text style={[styles.groupPLText, { color: groupUp ? Colors.success : Colors.danger }]}>
+                          {groupUp ? '+' : ''}{formatUSD(g.plUSD)} ({formatPercent(g.plPercent)})
                         </Text>
                       </View>
                     </View>
                   </View>
-                  {/* Sub-rows for each position */}
                   {enrichedHoldings.filter((h) => h.assetId === g.assetId).map((h) => (
                     <View key={h.id} style={styles.subRow}>
                       <Text style={styles.subDate}>{formatDate(h.date)}</Text>
@@ -367,7 +349,7 @@ export default function PortfolioScreen({ navigation }) {
                         <Text style={styles.subCurrent}>{formatUSD(h.currentUSD)}</Text>
                         <TouchableOpacity
                           onPress={() =>
-                            Alert.alert('Sil', `Bu pozisyonu silmek istiyor musunuz?`, [
+                            Alert.alert('Sil', 'Bu pozisyonu silmek istiyor musunuz?', [
                               { text: 'İptal', style: 'cancel' },
                               { text: 'Sil', style: 'destructive', onPress: () => deleteHolding(h.id) },
                             ])
@@ -394,16 +376,12 @@ export default function PortfolioScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* FAB */}
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 20 }]}
         onPress={() => navigation.navigate('AddInvestment')}
         activeOpacity={0.85}
       >
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          style={styles.fabGradient}
-        >
+        <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={styles.fabGradient}>
           <Ionicons name="add" size={26} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
@@ -439,29 +417,58 @@ const styles = StyleSheet.create({
   },
   addFirstBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  headerGradient: { paddingHorizontal: 20, paddingBottom: 24 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  addBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#fff',
+  headerWrap: { marginBottom: 8 },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+  },
+  summaryCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  summaryCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  refreshCardBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.accentLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerValueBox: { alignItems: 'center' },
-  headerValueLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  headerValueUSD: { fontSize: 38, fontWeight: '800', color: '#fff', letterSpacing: -1, marginVertical: 4 },
-  headerValueTRY: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.75)', marginBottom: 12 },
+  summaryValueUSD: { fontSize: 34, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -1 },
+  summaryValueTRY: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, marginTop: 2, marginBottom: 8 },
+  summaryPLRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   plBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  plBadgeText: { fontSize: 14, fontWeight: '700' },
+  plBadgeText: { fontSize: 13, fontWeight: '700' },
+  plLabel: { fontSize: 12, color: Colors.textLight },
 
   scroll: { flex: 1 },
 

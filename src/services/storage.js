@@ -78,9 +78,8 @@ export const StorageService = {
   // Settings
   async getSettings() {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
-    return data
-      ? JSON.parse(data)
-      : { displayCurrency: 'USD', showTRY: true, notifications: true };
+    const defaults = { displayCurrency: 'USD', localCurrency: 'TRY', showTRY: true, notifications: true };
+    return data ? { ...defaults, ...JSON.parse(data), displayCurrency: 'USD' } : defaults;
   },
 
   async saveSettings(settings) {

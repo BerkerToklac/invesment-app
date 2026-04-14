@@ -15,13 +15,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
-import { useAuth } from '../context/AuthContext';
-import { formatUSD, formatTRY, formatPercent } from '../utils/formatters';
+import { useSettings } from '../context/SettingsContext';
+import { formatUSD, formatPercent } from '../utils/formatters';
+import { convertUSDToCurrency, formatCurrency, getEurUsd, getUsdTry } from '../utils/currency';
 
 const TROY_OZ = 31.1034768;
 
 function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, iconBg }) {
   const isPositive = change >= 0;
+
   return (
     <View style={styles.rateCard}>
       <View style={[styles.rateIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
@@ -55,7 +57,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
   const { computeStats } = usePortfolio();
-  const { user } = useAuth();
+  const { localCurrency } = useSettings();
 
   const getAssetPrice = (id) => {
     if (!prices) return null;
@@ -83,31 +85,39 @@ export default function HomeScreen() {
     return computeStats(getAssetPrice);
   }, [prices, computeStats]);
 
-  const usdTry = prices?.forex?.usdTry || 38.5;
-  const eurTry = prices?.forex?.eurTry || 41.8;
-  const eurUsd = prices?.forex?.eurUsd || 1.086;
+  const usdTry = getUsdTry(prices);
+  const eurUsd = getEurUsd(prices);
+  const eurTry = prices?.forex?.eurTry || (usdTry / (1 / eurUsd));
   const goldGramUSD = prices?.metals?.goldGramUSD || 106;
   const silverGramUSD = prices?.metals?.silverGramUSD || 1.04;
-  const goldGramTRY = goldGramUSD * usdTry;
-  const silverGramTRY = silverGramUSD * usdTry;
   const goldOzUSD = prices?.metals?.goldOzUSD || (goldGramUSD * TROY_OZ);
   const silverOzUSD = prices?.metals?.silverOzUSD || (silverGramUSD * TROY_OZ);
-  const goldOzTRY = goldOzUSD * usdTry;
-  const silverOzTRY = silverOzUSD * usdTry;
 
   const btcChange = prices?.crypto?.bitcoin?.change24h || 0;
   const bnbChange = prices?.crypto?.binancecoin?.change24h || 0;
   const xrpChange = prices?.crypto?.ripple?.change24h || 0;
 
-  const userInitial = user?.email?.[0]?.toUpperCase() || 'U';
   const lastUpdatedStr = lastUpdated
     ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     : '--:--';
 
   const totalUSD = portfolioStats?.totalCurrentUSD || 0;
-  const totalTRY = totalUSD * usdTry;
+  const totalLocal = convertUSDToCurrency(totalUSD, localCurrency, prices);
   const plUSD = portfolioStats?.totalPLUSD || 0;
   const plPct = portfolioStats?.totalPLPercent || 0;
+
+  const localSub = (usdValue, decimals = 2) =>
+    formatCurrency(convertUSDToCurrency(usdValue, localCurrency, prices), localCurrency, decimals);
+
+  const dollarRateValue = localCurrency === 'EUR'
+    ? formatCurrency(convertUSDToCurrency(1, 'EUR', prices), 'EUR', 4)
+    : formatCurrency(usdTry, 'TRY', 4);
+
+  const euroRateValue = localCurrency === 'EUR'
+    ? formatUSD(eurUsd, 4)
+    : formatCurrency(eurTry, 'TRY', 4);
+
+  const euroRateSub = localCurrency === 'EUR' ? '1 EUR' : formatUSD(eurUsd, 4);
 
   return (
     <View style={styles.root}>
@@ -116,34 +126,19 @@ export default function HomeScreen() {
           colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
           style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
         >
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{userInitial}</Text>
-              </View>
-              <View>
-                <Text style={styles.headerGreeting}>Portföyüm</Text>
-                <Text style={styles.headerEmail} numberOfLines={1}>{user?.email}</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.iconBtn} onPress={refresh}>
-                <Ionicons name="refresh" size={20} color="rgba(255,255,255,0.9)" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn}>
-                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
           <View style={styles.portfolioCard}>
-            <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
+            <View style={styles.portfolioCardTop}>
+              <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
+              <TouchableOpacity style={styles.refreshCardBtn} onPress={refresh}>
+                <Ionicons name="refresh" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
             {loading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 8 }} />
             ) : (
               <>
                 <Text style={styles.portfolioValueUSD}>{formatUSD(totalUSD)}</Text>
-                <Text style={styles.portfolioValueTRY}>{formatTRY(totalTRY)}</Text>
+                <Text style={styles.portfolioValueTRY}>{formatCurrency(totalLocal, localCurrency)}</Text>
                 <View style={styles.portfolioPLRow}>
                   <View
                     style={[
@@ -196,18 +191,18 @@ export default function HomeScreen() {
           <>
             <RateCard
               label="Dolar"
-              subLabel="USD / TRY"
-              value={`₺${usdTry.toFixed(4)}`}
+              subLabel={localCurrency === 'EUR' ? 'USD / EUR' : 'USD / TRY'}
+              value={dollarRateValue}
               subValue="1 USD"
               icon="cash-outline"
-              iconColor="#22C55E"
+              iconColor="#16A34A"
               iconBg="#DCFCE7"
             />
             <RateCard
               label="Euro"
-              subLabel="EUR / TRY"
-              value={`₺${eurTry.toFixed(4)}`}
-              subValue={`$${eurUsd.toFixed(4)}`}
+              subLabel={localCurrency === 'EUR' ? 'EUR / USD' : 'EUR / TRY'}
+              value={euroRateValue}
+              subValue={euroRateSub}
               icon="logo-euro"
               iconColor={Colors.primary}
               iconBg={Colors.accentLight}
@@ -221,7 +216,7 @@ export default function HomeScreen() {
               label="Gram Altın"
               subLabel="995/1000"
               value={formatUSD(goldGramUSD, 2)}
-              subValue={formatTRY(goldGramTRY, 2)}
+              subValue={localSub(goldGramUSD, 2)}
               icon="diamond-outline"
               iconColor={Colors.gold}
               iconBg={Colors.warningLight}
@@ -230,7 +225,7 @@ export default function HomeScreen() {
               label="Gram Gümüş"
               subLabel="995/1000"
               value={formatUSD(silverGramUSD, 4)}
-              subValue={formatTRY(silverGramTRY, 2)}
+              subValue={localSub(silverGramUSD, 2)}
               icon="sparkles-outline"
               iconColor={Colors.silver}
               iconBg={Colors.borderLight}
@@ -239,7 +234,7 @@ export default function HomeScreen() {
               label="Ons Altın"
               subLabel="Troy oz / USD"
               value={formatUSD(goldOzUSD, 2)}
-              subValue={formatTRY(goldOzTRY, 2)}
+              subValue={localSub(goldOzUSD, 2)}
               icon="medal-outline"
               iconColor={Colors.gold}
               iconBg={Colors.warningLight}
@@ -248,7 +243,7 @@ export default function HomeScreen() {
               label="Ons Gümüş"
               subLabel="Troy oz / USD"
               value={formatUSD(silverOzUSD, 2)}
-              subValue={formatTRY(silverOzTRY, 2)}
+              subValue={localSub(silverOzUSD, 2)}
               icon="ellipse-outline"
               iconColor={Colors.silver}
               iconBg={Colors.borderLight}
@@ -263,7 +258,7 @@ export default function HomeScreen() {
                 label="Bitcoin"
                 subLabel="BTC / USD"
                 value={formatUSD(prices.crypto.bitcoin.usd)}
-                subValue={formatTRY(prices.crypto.bitcoin.usd * usdTry, 2)}
+                subValue={localSub(prices.crypto.bitcoin.usd, 2)}
                 change={btcChange}
                 icon="logo-bitcoin"
                 iconColor="#F7931A"
@@ -275,7 +270,7 @@ export default function HomeScreen() {
                 label="BNB"
                 subLabel="BNB / USD"
                 value={formatUSD(prices.crypto.binancecoin.usd)}
-                subValue={formatTRY(prices.crypto.binancecoin.usd * usdTry, 2)}
+                subValue={localSub(prices.crypto.binancecoin.usd, 2)}
                 change={bnbChange}
                 icon="cube-outline"
                 iconColor="#F0B90B"
@@ -286,8 +281,8 @@ export default function HomeScreen() {
               <RateCard
                 label="Ripple"
                 subLabel="XRP / USD"
-                value={`$${prices.crypto.ripple.usd.toFixed(4)}`}
-                subValue={formatTRY(prices.crypto.ripple.usd * usdTry, 4)}
+                value={formatUSD(prices.crypto.ripple.usd, 4)}
+                subValue={localSub(prices.crypto.ripple.usd, 4)}
                 change={xrpChange}
                 icon="water-outline"
                 iconColor="#00AAE4"
@@ -312,35 +307,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     overflow: 'hidden',
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  headerGreeting: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  headerEmail: { color: 'rgba(255,255,255,0.65)', fontSize: 12, maxWidth: 180 },
-  headerRight: { flexDirection: 'row', gap: 8 },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
   portfolioCard: {
     backgroundColor: '#fff',
@@ -352,13 +318,26 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
+  portfolioCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   portfolioLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  refreshCardBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.accentLight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   portfolioValueUSD: {
     fontSize: 34,

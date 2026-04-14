@@ -38,7 +38,6 @@ export const PortfolioProvider = ({ children }) => {
     setHoldings(filtered);
   };
 
-  // Compute portfolio stats given current prices
   const computeStats = useCallback(
     (getAssetPrice) => {
       let totalCostUSD = 0;
@@ -78,7 +77,6 @@ export const PortfolioProvider = ({ children }) => {
     [holdings]
   );
 
-  // Group holdings by assetId for chart
   const getGroupedHoldings = useCallback(
     (getAssetPrice) => {
       const map = {};

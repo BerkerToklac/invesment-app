@@ -14,6 +14,14 @@ export const formatTRY = (value, decimals = 2) => {
   })}`;
 };
 
+export const formatEUR = (value, decimals = 2) => {
+  if (value === null || value === undefined || isNaN(value)) return '€0,00';
+  return `€${Number(value).toLocaleString('de-DE', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+};
+
 export const formatPercent = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '0.00%';
   const sign = value >= 0 ? '+' : '';

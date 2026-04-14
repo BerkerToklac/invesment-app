@@ -1,6 +1,6 @@
 import { formatEUR, formatTRY, formatUSD } from './formatters';
 
-export const LOCAL_CURRENCY_OPTIONS = ['TRY', 'EUR'];
+export const LOCAL_CURRENCY_OPTIONS = ['TRY', 'EUR', 'USD'];
 
 export function getUsdTry(prices) {
   return prices?.forex?.usdTry || 38.5;
@@ -37,5 +37,5 @@ export function getCurrencySymbol(currency) {
 }
 
 export function getLocalCurrencyOptions(localCurrency) {
-  return [localCurrency, 'USD'];
+  return Array.from(new Set([localCurrency, 'USD']));
 }

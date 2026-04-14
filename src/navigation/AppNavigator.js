@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { Colors } from '../theme/colors';
 
 import SplashScreen from '../screens/SplashScreen';
@@ -24,15 +25,16 @@ const Tab = createBottomTabNavigator();
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { t } = useSettings();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           const icons = {
-            'Ana Sayfa': focused ? 'home' : 'home-outline',
-            'Portföy': focused ? 'briefcase' : 'briefcase-outline',
-            'Ayarlar': focused ? 'person' : 'person-outline',
+            HomeTab: focused ? 'home' : 'home-outline',
+            PortfolioTab: focused ? 'briefcase' : 'briefcase-outline',
+            SettingsTab: focused ? 'person' : 'person-outline',
           };
           return <Ionicons name={icons[route.name] || 'ellipse'} size={size} color={color} />;
         },
@@ -53,9 +55,9 @@ function MainTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Ana Sayfa" component={HomeScreen} />
-      <Tab.Screen name="Portföy" component={PortfolioScreen} />
-      <Tab.Screen name="Ayarlar" component={SettingsScreen} />
+      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: t('home_tab') }} />
+      <Tab.Screen name="PortfolioTab" component={PortfolioScreen} options={{ tabBarLabel: t('portfolio_tab') }} />
+      <Tab.Screen name="SettingsTab" component={SettingsScreen} options={{ tabBarLabel: t('settings_tab') }} />
     </Tab.Navigator>
   );
 }
@@ -100,9 +102,5 @@ export default function AppNavigator() {
     );
   }
 
-  return (
-    <NavigationContainer>
-      {user ? <AppStack /> : <AuthStack />}
-    </NavigationContainer>
-  );
+  return <NavigationContainer>{user ? <AppStack /> : <AuthStack />}</NavigationContainer>;
 }

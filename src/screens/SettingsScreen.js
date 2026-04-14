@@ -47,32 +47,32 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
   const { holdings, deleteHolding } = usePortfolio();
-  const { prices, lastUpdated, refresh } = useMarket();
-  const { localCurrency, setLocalCurrency } = useSettings();
+  const { lastUpdated, refresh } = useMarket();
+  const { localCurrency, setLocalCurrency, language, setLanguage, t } = useSettings();
 
   const handleLogout = () => {
-    Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğinden emin misin?', [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: logout },
+    Alert.alert(t('logout_confirm_title'), t('logout_confirm_sub'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('logout'), style: 'destructive', onPress: logout },
     ]);
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Hesabı Sil',
-      'Hesabın ve tüm portföy verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz.',
+      t('delete_account_confirm_title'),
+      t('delete_account_confirm_sub'),
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Hesabı Sil',
+          text: t('delete_account'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Emin misin?',
-              'Tüm veriler cihazından silinecek.',
+              t('are_you_sure'),
+              t('delete_everything_sub'),
               [
-                { text: 'Vazgeç', style: 'cancel' },
-                { text: 'Evet, Sil', style: 'destructive', onPress: deleteAccount },
+                { text: t('cancel'), style: 'cancel' },
+                { text: t('delete_account'), style: 'destructive', onPress: deleteAccount },
               ]
             );
           },
@@ -83,33 +83,32 @@ export default function SettingsScreen() {
 
   const handleClearPortfolio = () => {
     Alert.alert(
-      'Portföyü Temizle',
-      'Tüm yatırım kayıtları silinecek. Bu işlem geri alınamaz.',
+      t('clear_portfolio_confirm_title'),
+      t('clear_portfolio_confirm_sub'),
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Temizle',
+          text: t('clear'),
           style: 'destructive',
           onPress: async () => {
             for (const h of holdings) {
               await deleteHolding(h.id);
             }
-            Alert.alert('Tamam', 'Tüm yatırım kayıtları silindi.');
+            Alert.alert(t('success'), t('all_investments_deleted'));
           },
         },
       ]
     );
   };
 
-  const usdTry = prices?.forex?.usdTry;
   const lastUpdatedStr = lastUpdated
-    ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    ? lastUpdated.toLocaleTimeString(language === 'en' ? 'en-US' : 'tr-TR', { hour: '2-digit', minute: '2-digit' })
     : '--:--';
 
   const userInitial = user?.name
     ? user.name.trim()[0].toUpperCase()
     : user?.email?.[0]?.toUpperCase() || 'U';
-  const displayName = user?.name || 'Kullanıcı';
+  const displayName = user?.name || (language === 'en' ? 'User' : 'Kullanıcı');
 
   return (
     <View style={styles.root}>
@@ -117,7 +116,7 @@ export default function SettingsScreen() {
         colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
         style={[styles.header, { paddingTop: insets.top + 12 }]}
       >
-        <Text style={styles.pageTitle}>Hesabım</Text>
+        <Text style={styles.pageTitle}>{t('my_account')}</Text>
 
         <View style={styles.userCard}>
           <View style={styles.avatarCircle}>
@@ -127,13 +126,12 @@ export default function SettingsScreen() {
             <Text style={styles.userName}>{displayName}</Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
             <Text style={styles.userSub}>
-              {user?.age ? `${user.age} yaşında · ` : ''}
-              {holdings.length} yatırım kaydı
+              {holdings.length} {t('positions_count')}
             </Text>
           </View>
           <View style={styles.verifiedBadge}>
             <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
-            <Text style={styles.verifiedText}>Doğrulandı</Text>
+            <Text style={styles.verifiedText}>{t('verified')}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -143,51 +141,43 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <SectionHeader title="Piyasa Bilgisi" />
+        <SectionHeader title={t('market_info')} />
         <View style={styles.card}>
           <SettingRow
             icon="time-outline"
             iconColor={Colors.primary}
             iconBg={Colors.accentLight}
-            label="Son Güncelleme"
-            sub={`Kurlar: ${lastUpdatedStr}`}
+            label={t('last_updated')}
+            sub={lastUpdatedStr}
             onPress={refresh}
             right={
               <View style={styles.refreshChip}>
                 <Ionicons name="refresh" size={13} color={Colors.primary} />
-                <Text style={styles.refreshChipText}>Güncelle</Text>
+                <Text style={styles.refreshChipText}>{t('update')}</Text>
               </View>
             }
-          />
-          <View style={styles.divider} />
-          <SettingRow
-            icon="cash-outline"
-            iconColor={Colors.warning}
-            iconBg={Colors.warningLight}
-            label="USD/TRY Kuru"
-            sub={usdTry ? `1 USD = ₺${usdTry.toFixed(4)}` : 'Yükleniyor...'}
           />
           <View style={styles.divider} />
           <SettingRow
             icon="globe-outline"
             iconColor={Colors.success}
             iconBg={Colors.successLight}
-            label="Ana Para Birimi"
-            sub="USD (Dolar) · Değiştirilemez"
+            label={t('base_currency')}
+            sub={t('base_currency_fixed')}
           />
         </View>
 
-        <SectionHeader title="Para Birimi" />
+        <SectionHeader title={t('currency')} />
         <View style={styles.card}>
           <SettingRow
             icon="flag-outline"
             iconColor={Colors.danger}
             iconBg={Colors.dangerLight}
-            label="Yerel Para Birimi"
-            sub="Silik değerlerde ve alt bilgilerde bu para birimi gösterilir"
+            label={t('local_currency')}
+            sub={t('local_currency_sub')}
           />
           <View style={styles.currencySelector}>
-            {['TRY', 'EUR'].map((currency) => (
+            {['TRY', 'EUR', 'USD'].map((currency) => (
               <TouchableOpacity
                 key={currency}
                 style={[styles.currencyOption, localCurrency === currency && styles.currencyOptionActive]}
@@ -201,12 +191,36 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <SectionHeader title="Veri Kaynakları" />
+        <SectionHeader title={t('language')} />
+        <View style={styles.card}>
+          <SettingRow
+            icon="language-outline"
+            iconColor={Colors.primary}
+            iconBg={Colors.accentLight}
+            label={t('language')}
+            sub={t('language_sub')}
+          />
+          <View style={styles.currencySelector}>
+            {[{ key: 'tr', label: t('turkish') }, { key: 'en', label: t('english') }].map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.currencyOption, language === item.key && styles.currencyOptionActive]}
+                onPress={() => setLanguage(item.key)}
+              >
+                <Text style={[styles.currencyOptionText, language === item.key && styles.currencyOptionTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <SectionHeader title={t('data_sources')} />
         <View style={styles.card}>
           {[
-            { label: 'Döviz Kurları', sub: 'Frankfurter (api.frankfurter.app)', icon: 'swap-horizontal-outline', color: Colors.primary },
-            { label: 'Altın / Gümüş', sub: 'Türetilmiş spot fiyatlar', icon: 'diamond-outline', color: Colors.warning },
-            { label: 'Kripto Paralar', sub: 'CoinGecko (coingecko.com)', icon: 'logo-bitcoin', color: '#F7931A' },
+            { label: t('forex_rates'), sub: 'Frankfurter (api.frankfurter.app)', icon: 'swap-horizontal-outline', color: Colors.primary },
+            { label: `${t('metals')}`, sub: t('derived_spot_rates'), icon: 'diamond-outline', color: Colors.warning },
+            { label: 'CoinGecko', sub: 'coingecko.com', icon: 'logo-bitcoin', color: '#F7931A' },
           ].map((item, index) => (
             <React.Fragment key={item.label}>
               {index > 0 && <View style={styles.divider} />}
@@ -221,24 +235,24 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        <SectionHeader title="Portföy" />
+        <SectionHeader title={t('portfolio_section')} />
         <View style={styles.card}>
           <SettingRow
             icon="trash-outline"
             iconColor={Colors.danger}
             iconBg={Colors.dangerLight}
-            label="Portföyü Temizle"
-            sub="Tüm yatırım kayıtlarını sil"
+            label={t('clear_portfolio')}
+            sub={t('clear_portfolio_sub')}
             onPress={handleClearPortfolio}
             danger
           />
         </View>
 
-        <SectionHeader title="Uygulama" />
+        <SectionHeader title={t('app')} />
         <View style={styles.card}>
           {[
-            { icon: 'information-circle-outline', label: 'Versiyon', sub: '1.0.0', color: Colors.primary },
-            { icon: 'alert-circle-outline', label: 'Sorumluluk Reddi', sub: 'Bu uygulama yatırım tavsiyesi vermez', color: Colors.warning },
+            { icon: 'information-circle-outline', label: t('version'), sub: '1.0.0', color: Colors.primary },
+            { icon: 'alert-circle-outline', label: t('disclaimer_title'), sub: t('disclaimer_short'), color: Colors.warning },
           ].map((item, index) => (
             <React.Fragment key={item.label}>
               {index > 0 && <View style={styles.divider} />}
@@ -255,23 +269,21 @@ export default function SettingsScreen() {
 
         <View style={styles.disclaimer}>
           <Ionicons name="warning-outline" size={16} color={Colors.warning} />
-          <Text style={styles.disclaimerText}>
-            Bu uygulama yalnızca kişisel takip amacıyla geliştirilmiştir. Gösterilen fiyatlar bilgi amaçlıdır ve yatırım tavsiyesi niteliği taşımaz.
-          </Text>
+          <Text style={styles.disclaimerText}>{t('disclaimer_text')}</Text>
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-          <Text style={styles.logoutText}>Çıkış Yap</Text>
+          <Text style={styles.logoutText}>{t('logout')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
           <Ionicons name="trash" size={18} color="#fff" />
-          <Text style={styles.deleteAccountText}>Hesabı Sil</Text>
+          <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.deleteAccountWarning}>
-          Hesabını sildiğinde tüm portföy verilerin ve profil bilgilerin kalıcı olarak silinir.
+          {t('delete_account_warning')}
         </Text>
       </ScrollView>
     </View>

@@ -1,12 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { StorageService } from '../services/storage';
+import { translate } from '../utils/i18n';
 
 const SettingsContext = createContext(null);
 
 const DEFAULT_SETTINGS = {
   displayCurrency: 'USD',
   localCurrency: 'TRY',
+  language: 'tr',
   notifications: true,
 };
 
@@ -43,8 +45,13 @@ export const SettingsProvider = ({ children }) => {
   }, [settings]);
 
   const setLocalCurrency = useCallback(async (currency) => {
-    if (!['TRY', 'EUR'].includes(currency)) return settings;
+    if (!['TRY', 'EUR', 'USD'].includes(currency)) return settings;
     return updateSettings({ localCurrency: currency });
+  }, [settings, updateSettings]);
+
+  const setLanguage = useCallback(async (language) => {
+    if (!['tr', 'en'].includes(language)) return settings;
+    return updateSettings({ language });
   }, [settings, updateSettings]);
 
   const value = useMemo(() => ({
@@ -52,11 +59,14 @@ export const SettingsProvider = ({ children }) => {
     loading,
     displayCurrency: 'USD',
     localCurrency: settings.localCurrency || 'TRY',
+    language: settings.language || 'tr',
     notifications: settings.notifications ?? true,
     updateSettings,
     setLocalCurrency,
+    setLanguage,
     reloadSettings: loadSettings,
-  }), [loadSettings, loading, settings, setLocalCurrency, updateSettings]);
+    t: (key) => translate(settings.language || 'tr', key),
+  }), [loadSettings, loading, settings, setLanguage, setLocalCurrency, updateSettings]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

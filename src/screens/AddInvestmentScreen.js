@@ -22,11 +22,20 @@ import { Colors } from '../theme/colors';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
-import { PREDEFINED_ASSETS } from '../utils/assets';
+import { PREDEFINED_ASSETS, getLocalizedAssetName } from '../utils/assets';
 import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
 import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
 
 const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
+
+function sanitizeTwoDecimalInput(value) {
+  const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');
+  const parts = normalized.split('.');
+  if (parts.length === 1) return parts[0];
+  const integerPart = parts[0];
+  const decimalPart = parts.slice(1).join('').slice(0, 2);
+  return `${integerPart}.${decimalPart}`;
+}
 
 function DatePickerField({ value, onChange }) {
   const [showPicker, setShowPicker] = useState(false);
@@ -102,7 +111,7 @@ function DatePickerField({ value, onChange }) {
   );
 }
 
-function AssetPickerModal({ visible, onClose, onSelect, currentId, assets }) {
+function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(
@@ -119,7 +128,7 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets }) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Varlık Seç</Text>
+          <Text style={styles.modalTitle}>{t('asset_select')}</Text>
           <TouchableOpacity onPress={onClose}>
             <Ionicons name="close" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -129,7 +138,7 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets }) {
           <Ionicons name="search" size={18} color={Colors.textLight} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Varlık ara..."
+            placeholder={t('search_asset')}
             placeholderTextColor={Colors.textLight}
             value={search}
             onChangeText={setSearch}
@@ -176,7 +185,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { addHolding } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
-  const { localCurrency } = useSettings();
+  const { localCurrency, language, t } = useSettings();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -189,8 +198,15 @@ export default function AddInvestmentScreen({ navigation }) {
   const priceCurrencyOptions = useMemo(() => getLocalCurrencyOptions(localCurrency), [localCurrency]);
 
   const pickerAssets = useMemo(
-    () => HOME_ASSET_IDS.map((id) => PREDEFINED_ASSETS.find((asset) => asset.id === id)).filter(Boolean),
-    []
+    () =>
+      HOME_ASSET_IDS
+        .map((id) => PREDEFINED_ASSETS.find((asset) => asset.id === id))
+        .filter(Boolean)
+        .map((asset) => ({
+          ...asset,
+          name: getLocalizedAssetName(asset.id, language),
+        })),
+    [language]
   );
 
   useEffect(() => {
@@ -218,24 +234,24 @@ export default function AddInvestmentScreen({ navigation }) {
 
   const autofillPrice = () => {
     if (!currentMarketPrice) {
-      Alert.alert('Fiyat Bulunamadı', 'Bu varlık için güncel fiyat alınamadı.');
+      Alert.alert(t('price_unavailable'), t('price_unavailable_sub'));
       return;
     }
-    setBuyPrice(String(Number(currentMarketPrice.toFixed(6))));
+    setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)));
   };
 
   const validate = () => {
-    if (!selectedAsset) return 'Lütfen bir varlık seçin.';
-    if (!amount || amountNumber <= 0) return 'Geçerli bir miktar girin.';
-    if (!buyPrice || buyPriceNumber <= 0) return 'Geçerli bir alış fiyatı girin.';
-    if (!date) return 'Tarih seçin.';
+    if (!selectedAsset) return t('select_asset_error');
+    if (!amount || amountNumber <= 0) return t('valid_amount_error');
+    if (!buyPrice || buyPriceNumber <= 0) return t('valid_purchase_price_error');
+    if (!date) return t('select_date_error');
     return null;
   };
 
   const handleSave = async () => {
     const err = validate();
     if (err) {
-      Alert.alert('Eksik Bilgi', err);
+      Alert.alert(t('missing_info'), err);
       return;
     }
 
@@ -255,11 +271,11 @@ export default function AddInvestmentScreen({ navigation }) {
         notes: '',
       });
 
-      Alert.alert('Başarılı', `${selectedAsset.name} portföye eklendi.`, [
-        { text: 'Tamam', onPress: () => navigation.goBack() },
+      Alert.alert(t('success'), `${selectedAsset.name} ${t('added_to_portfolio')}`, [
+        { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      Alert.alert('Hata', 'Yatırım eklenirken bir sorun oluştu.');
+      Alert.alert(t('error'), t('add_investment_error'));
     } finally {
       setLoading(false);
     }
@@ -275,7 +291,7 @@ export default function AddInvestmentScreen({ navigation }) {
           <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Yatırım Ekle</Text>
+          <Text style={styles.headerTitle}>{t('add_investment')}</Text>
           <View style={{ width: 38 }} />
         </View>
       </LinearGradient>
@@ -286,7 +302,7 @@ export default function AddInvestmentScreen({ navigation }) {
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 32 }}
           showsVerticalScrollIndicator={false}
         >
-          <FormRow label="Varlık *">
+          <FormRow label={`${t('asset')} *`}>
             <TouchableOpacity style={styles.assetPickerBtn} onPress={() => setPickerVisible(true)}>
               {selectedAsset ? (
                 <View style={styles.assetPickerSelected}>
@@ -299,7 +315,7 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                 </View>
               ) : (
-                <Text style={styles.assetPickerPlaceholder}>Varlık seçin...</Text>
+                <Text style={styles.assetPickerPlaceholder}>{t('asset_select')}...</Text>
               )}
               <Ionicons name="chevron-down" size={18} color={Colors.textLight} />
             </TouchableOpacity>
@@ -309,7 +325,7 @@ export default function AddInvestmentScreen({ navigation }) {
             <View style={styles.marketPriceInfo}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
               <Text style={styles.marketPriceText}>
-                Güncel fiyat: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
+                {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
               </Text>
               {priceCurrency !== 'USD' && currentMarketPriceUSD ? (
                 <Text style={styles.marketPriceSub}>USD: {formatUSD(currentMarketPriceUSD, currentMarketPriceUSD < 1 ? 4 : 2)}</Text>
@@ -318,16 +334,16 @@ export default function AddInvestmentScreen({ navigation }) {
                 <Text style={styles.marketPriceSub}>{localCurrency}: {formatCurrency(localMarketPrice, localCurrency, localMarketPrice < 1 ? 4 : 2)}</Text>
               ) : null}
               <TouchableOpacity style={styles.autofillBtn} onPress={autofillPrice}>
-                <Text style={styles.autofillText}>Kullan</Text>
+                <Text style={styles.autofillText}>{t('use')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <FormRow label="Alış Tarihi *">
+          <FormRow label={`${t('purchase_date')} *`}>
             <DatePickerField value={date} onChange={setDate} />
           </FormRow>
 
-          <FormRow label="Miktar *">
+          <FormRow label={`${t('amount')} *`}>
             <View style={styles.inputWithSuffix}>
               <TextInput
                 style={[styles.input, styles.borderlessInput]}
@@ -345,7 +361,7 @@ export default function AddInvestmentScreen({ navigation }) {
             </View>
           </FormRow>
 
-          <FormRow label={`Alış Fiyatı (${priceCurrency}) *`}>
+          <FormRow label={`${t('purchase_price')} (${priceCurrency}) *`}>
             {selectedAsset && (
               <View style={styles.currencyTabs}>
                 {priceCurrencyOptions.map((currency) => (
@@ -371,7 +387,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 placeholder="0.00"
                 placeholderTextColor={Colors.textLight}
                 value={buyPrice}
-                onChangeText={(v) => setBuyPrice(v.replace(',', '.'))}
+                onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -380,13 +396,13 @@ export default function AddInvestmentScreen({ navigation }) {
           <View style={styles.footerSection}>
             {totalCostUSD > 0 && (
               <View style={styles.totalPreview}>
-                <Text style={styles.totalPreviewLabel}>Toplam Maliyet</Text>
+                <Text style={styles.totalPreviewLabel}>{t('total_cost')}</Text>
                 <Text style={styles.totalPreviewValue}>{formatCurrency(totalCostLocal, localCurrency, totalCostLocal < 1 ? 4 : 2)}</Text>
-                <Text style={styles.totalPreviewSub}>USD karşılığı: {formatUSD(totalCostUSD)}</Text>
+                <Text style={styles.totalPreviewSub}>{t('usd_equivalent')}: {formatUSD(totalCostUSD)}</Text>
                 {currentMarketPriceUSD ? (
                   <>
                     <Text style={styles.totalPreviewSub}>
-                      Güncel değer ({localCurrency}): {formatCurrency(currentValueLocal, localCurrency, currentValueLocal < 1 ? 4 : 2)}
+                      {t('current_value')} ({localCurrency}): {formatCurrency(currentValueLocal, localCurrency, currentValueLocal < 1 ? 4 : 2)}
                     </Text>
                     <Text style={styles.totalPreviewSub}>Güncel değer (USD): {formatUSD(currentValueUSD)}</Text>
                   </>
@@ -410,7 +426,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 ) : (
                   <>
                     <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    <Text style={styles.saveBtnText}>Portföye Ekle</Text>
+                    <Text style={styles.saveBtnText}>{t('add_to_portfolio')}</Text>
                   </>
                 )}
               </LinearGradient>
@@ -425,6 +441,7 @@ export default function AddInvestmentScreen({ navigation }) {
         onSelect={setSelectedAsset}
         currentId={selectedAsset?.id}
         assets={pickerAssets}
+        t={t}
       />
     </View>
   );

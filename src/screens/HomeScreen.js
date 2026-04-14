@@ -57,7 +57,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
   const { computeStats } = usePortfolio();
-  const { localCurrency } = useSettings();
+  const { localCurrency, t } = useSettings();
 
   const getAssetPrice = (id) => {
     if (!prices) return null;
@@ -128,7 +128,7 @@ export default function HomeScreen() {
         >
           <View style={styles.portfolioCard}>
             <View style={styles.portfolioCardTop}>
-              <Text style={styles.portfolioLabel}>Toplam Portföy Değeri</Text>
+              <Text style={styles.portfolioLabel}>{t('total_portfolio_value')}</Text>
               <TouchableOpacity style={styles.refreshCardBtn} onPress={refresh}>
                 <Ionicons name="refresh" size={16} color={Colors.primary} />
               </TouchableOpacity>
@@ -155,7 +155,7 @@ export default function HomeScreen() {
                       {plUSD >= 0 ? '+' : ''}{formatUSD(plUSD)} ({formatPercent(plPct)})
                     </Text>
                   </View>
-                  <Text style={styles.plLabel}>Toplam Kar/Zarar</Text>
+                  <Text style={styles.plLabel}>{t('total_profit_loss')}</Text>
                 </View>
               </>
             )}
@@ -173,24 +173,24 @@ export default function HomeScreen() {
       >
         <View style={styles.lastUpdatedRow}>
           <Ionicons name="time-outline" size={13} color={Colors.textLight} />
-          <Text style={styles.lastUpdatedText}>Son güncelleme: {lastUpdatedStr}</Text>
+          <Text style={styles.lastUpdatedText}>{t('last_updated')}: {lastUpdatedStr}</Text>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Döviz Kurları</Text>
+          <Text style={styles.sectionTitle}>{t('exchange_rates')}</Text>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>Canlı</Text>
+          <Text style={styles.liveText}>{t('live')}</Text>
         </View>
 
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={Colors.primary} />
-            <Text style={styles.loadingText}>Kurlar güncelleniyor...</Text>
+            <Text style={styles.loadingText}>{t('rates_updating')}</Text>
           </View>
         ) : (
           <>
             <RateCard
-              label="Dolar"
+              label={t('dollar')}
               subLabel={localCurrency === 'EUR' ? 'USD / EUR' : 'USD / TRY'}
               value={dollarRateValue}
               subValue="1 USD"
@@ -199,7 +199,7 @@ export default function HomeScreen() {
               iconBg="#DCFCE7"
             />
             <RateCard
-              label="Euro"
+              label={t('euro')}
               subLabel={localCurrency === 'EUR' ? 'EUR / USD' : 'EUR / TRY'}
               value={euroRateValue}
               subValue={euroRateSub}
@@ -209,11 +209,11 @@ export default function HomeScreen() {
             />
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Metaller</Text>
+              <Text style={styles.sectionTitle}>{t('metals')}</Text>
             </View>
 
             <RateCard
-              label="Gram Altın"
+              label={t('gram_gold')}
               subLabel="995/1000"
               value={formatUSD(goldGramUSD, 2)}
               subValue={localSub(goldGramUSD, 2)}
@@ -222,7 +222,7 @@ export default function HomeScreen() {
               iconBg={Colors.warningLight}
             />
             <RateCard
-              label="Gram Gümüş"
+              label={t('gram_silver')}
               subLabel="995/1000"
               value={formatUSD(silverGramUSD, 4)}
               subValue={localSub(silverGramUSD, 2)}
@@ -231,7 +231,7 @@ export default function HomeScreen() {
               iconBg={Colors.borderLight}
             />
             <RateCard
-              label="Ons Altın"
+              label={t('ounce_gold')}
               subLabel="Troy oz / USD"
               value={formatUSD(goldOzUSD, 2)}
               subValue={localSub(goldOzUSD, 2)}
@@ -240,7 +240,7 @@ export default function HomeScreen() {
               iconBg={Colors.warningLight}
             />
             <RateCard
-              label="Ons Gümüş"
+              label={t('ounce_silver')}
               subLabel="Troy oz / USD"
               value={formatUSD(silverOzUSD, 2)}
               subValue={localSub(silverOzUSD, 2)}
@@ -250,12 +250,12 @@ export default function HomeScreen() {
             />
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Kripto</Text>
+              <Text style={styles.sectionTitle}>{t('crypto')}</Text>
             </View>
 
             {prices?.crypto?.bitcoin && (
               <RateCard
-                label="Bitcoin"
+                label={t('bitcoin')}
                 subLabel="BTC / USD"
                 value={formatUSD(prices.crypto.bitcoin.usd)}
                 subValue={localSub(prices.crypto.bitcoin.usd, 2)}
@@ -279,7 +279,7 @@ export default function HomeScreen() {
             )}
             {prices?.crypto?.ripple && (
               <RateCard
-                label="Ripple"
+                label={t('ripple')}
                 subLabel="XRP / USD"
                 value={formatUSD(prices.crypto.ripple.usd, 4)}
                 subValue={localSub(prices.crypto.ripple.usd, 4)}

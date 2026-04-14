@@ -141,7 +141,7 @@ export default function PortfolioScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { prices, refreshing, refresh } = useMarket();
   const { holdings, computeStats, getGroupedHoldings, deleteHolding } = usePortfolio();
-  const { localCurrency } = useSettings();
+  const { localCurrency, t } = useSettings();
   const [showByAsset, setShowByAsset] = useState(true);
 
   const getAssetPrice = (id) => {
@@ -184,19 +184,19 @@ export default function PortfolioScreen({ navigation }) {
           colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
           style={[styles.emptyHeader, { paddingTop: insets.top + 16 }]}
         >
-          <Text style={styles.pageTitle}>Portföyüm</Text>
+          <Text style={styles.pageTitle}>{t('portfolio_tab')}</Text>
         </LinearGradient>
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
             <Ionicons name="briefcase-outline" size={48} color={Colors.textLight} />
           </View>
-          <Text style={styles.emptyTitle}>Portföyün Boş</Text>
+          <Text style={styles.emptyTitle}>{t('empty_portfolio')}</Text>
           <Text style={styles.emptySubtitle}>
-            İlk yatırımını ekleyerek portföyünü oluşturmaya başla.
+            {t('empty_portfolio_subtitle')}
           </Text>
           <TouchableOpacity style={styles.addFirstBtn} onPress={() => navigation.navigate('AddInvestment')}>
             <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.addFirstBtnText}>İlk Yatırımı Ekle</Text>
+            <Text style={styles.addFirstBtnText}>{t('add_first_investment')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -212,7 +212,7 @@ export default function PortfolioScreen({ navigation }) {
         >
           <View style={styles.summaryCard}>
             <View style={styles.summaryCardTop}>
-              <Text style={styles.summaryLabel}>Toplam Portföy Değeri</Text>
+              <Text style={styles.summaryLabel}>{t('total_portfolio_value')}</Text>
               <TouchableOpacity style={styles.refreshCardBtn} onPress={refresh}>
                 <Ionicons name="refresh" size={16} color={Colors.primary} />
               </TouchableOpacity>
@@ -230,7 +230,7 @@ export default function PortfolioScreen({ navigation }) {
                   {isPositive ? '+' : ''}{formatUSD(totalPLUSD)} ({formatPercent(totalPLPercent)})
                 </Text>
               </View>
-              <Text style={styles.plLabel}>Toplam Kar/Zarar</Text>
+              <Text style={styles.plLabel}>{t('total_profit_loss')}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -246,14 +246,14 @@ export default function PortfolioScreen({ navigation }) {
       >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
           <StatCard
-            label="Maliyet"
+            label={t('cost')}
             value={formatUSD(totalCostUSD)}
             icon="receipt-outline"
             iconColor={Colors.primary}
             iconBg={Colors.accentLight}
           />
           <StatCard
-            label="Kar / Zarar"
+            label={t('profit_loss')}
             value={(isPositive ? '+' : '') + formatUSD(totalPLUSD)}
             valueColor={isPositive ? Colors.success : Colors.danger}
             sub={formatPercent(totalPLPercent)}
@@ -269,9 +269,9 @@ export default function PortfolioScreen({ navigation }) {
             iconBg={Colors.warningLight}
           />
           <StatCard
-            label="Varlık Sayısı"
-            value={`${grouped.length} varlık`}
-            sub={`${holdings.length} pozisyon`}
+            label={t('asset_count')}
+            value={`${grouped.length} ${t('assets_count')}`}
+            sub={`${holdings.length} ${t('positions_count')}`}
             icon="layers-outline"
             iconColor={Colors.accent}
             iconBg={Colors.accentLight}
@@ -279,7 +279,7 @@ export default function PortfolioScreen({ navigation }) {
         </ScrollView>
 
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Dağılım</Text>
+          <Text style={styles.chartTitle}>{t('distribution')}</Text>
           <View style={styles.chartContent}>
             <DonutChart data={donutData} total={totalCurrentUSD} size={190} />
             <View style={styles.legend}>
@@ -305,13 +305,13 @@ export default function PortfolioScreen({ navigation }) {
             style={[styles.toggleBtn, showByAsset && styles.toggleBtnActive]}
             onPress={() => setShowByAsset(true)}
           >
-            <Text style={[styles.toggleText, showByAsset && styles.toggleTextActive]}>Varlıklara Göre</Text>
+            <Text style={[styles.toggleText, showByAsset && styles.toggleTextActive]}>{t('by_asset')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, !showByAsset && styles.toggleBtnActive]}
             onPress={() => setShowByAsset(false)}
           >
-            <Text style={[styles.toggleText, !showByAsset && styles.toggleTextActive]}>Tüm İşlemler</Text>
+            <Text style={[styles.toggleText, !showByAsset && styles.toggleTextActive]}>{t('all_transactions')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -328,7 +328,7 @@ export default function PortfolioScreen({ navigation }) {
                     <View style={styles.groupInfo}>
                       <Text style={styles.groupName}>{g.assetName}</Text>
                       <Text style={styles.groupAmount}>
-                        {formatCrypto(g.totalAmount)} · Ort. {formatUSD(g.avgBuyPrice, g.avgBuyPrice < 1 ? 4 : 2)}
+                        {formatCrypto(g.totalAmount)} · {t('average_short')} {formatUSD(g.avgBuyPrice, g.avgBuyPrice < 1 ? 4 : 2)}
                       </Text>
                     </View>
                     <View style={styles.groupRight}>
@@ -343,15 +343,15 @@ export default function PortfolioScreen({ navigation }) {
                   {enrichedHoldings.filter((h) => h.assetId === g.assetId).map((h) => (
                     <View key={h.id} style={styles.subRow}>
                       <Text style={styles.subDate}>{formatDate(h.date)}</Text>
-                      <Text style={styles.subAmount}>{formatCrypto(h.amount)} adet</Text>
-                      <Text style={styles.subBuyPrice}>Alış: {formatUSD(h.buyPriceUSD)}</Text>
+                      <Text style={styles.subAmount}>{formatCrypto(h.amount)} {t('quantity_unit')}</Text>
+                      <Text style={styles.subBuyPrice}>{t('buy_price')}: {formatUSD(h.buyPriceUSD)}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.subCurrent}>{formatUSD(h.currentUSD)}</Text>
                         <TouchableOpacity
                           onPress={() =>
-                            Alert.alert('Sil', 'Bu pozisyonu silmek istiyor musunuz?', [
-                              { text: 'İptal', style: 'cancel' },
-                              { text: 'Sil', style: 'destructive', onPress: () => deleteHolding(h.id) },
+                            Alert.alert(t('delete'), t('delete_position_confirm'), [
+                              { text: t('cancel'), style: 'cancel' },
+                              { text: t('delete'), style: 'destructive', onPress: () => deleteHolding(h.id) },
                             ])
                           }
                         >

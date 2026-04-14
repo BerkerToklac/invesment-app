@@ -161,6 +161,28 @@ export const getAssetById = (id) => {
   return PREDEFINED_ASSETS.find((a) => a.id === id) || null;
 };
 
+export const getLocalizedAssetName = (assetId, language = 'tr') => {
+  const names = {
+    usd: { tr: 'Dolar', en: 'Dollar' },
+    eur: { tr: 'Euro', en: 'Euro' },
+    'gold-gram': { tr: 'Gram Altın', en: 'Gram Gold' },
+    'silver-gram': { tr: 'Gram Gümüş', en: 'Gram Silver' },
+    'gold-oz': { tr: 'Ons Altın', en: 'Gold Ounce' },
+    'silver-oz': { tr: 'Ons Gümüş', en: 'Silver Ounce' },
+    btc: { tr: 'Bitcoin', en: 'Bitcoin' },
+    bnb: { tr: 'BNB', en: 'BNB' },
+    xrp: { tr: 'Ripple', en: 'Ripple' },
+    eth: { tr: 'Ethereum', en: 'Ethereum' },
+    sol: { tr: 'Solana', en: 'Solana' },
+    usdt: { tr: 'Tether', en: 'Tether' },
+    paxg: { tr: 'PAX Gold', en: 'PAX Gold' },
+    xaut: { tr: 'Tether Gold (OKX)', en: 'Tether Gold (OKX)' },
+    custom: { tr: 'Diğer', en: 'Other' },
+  };
+
+  return names[assetId]?.[language] || names[assetId]?.tr || getAssetById(assetId)?.name || assetId;
+};
+
 export const getAssetColor = (assetId) => {
   const asset = getAssetById(assetId);
   return asset ? asset.color : '#22C55E';

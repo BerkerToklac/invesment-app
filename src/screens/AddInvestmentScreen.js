@@ -321,79 +321,79 @@ export default function AddInvestmentScreen({ navigation }) {
             </TouchableOpacity>
           </FormRow>
 
-          {selectedAsset && currentMarketPrice && (
-            <View style={styles.marketPriceInfo}>
-              <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
-              <Text style={styles.marketPriceText}>
-                {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
-              </Text>
-              {priceCurrency !== 'USD' && currentMarketPriceUSD ? (
-                <Text style={styles.marketPriceSub}>USD: {formatUSD(currentMarketPriceUSD, currentMarketPriceUSD < 1 ? 4 : 2)}</Text>
-              ) : null}
-              {priceCurrency !== localCurrency && localMarketPrice ? (
-                <Text style={styles.marketPriceSub}>{localCurrency}: {formatCurrency(localMarketPrice, localCurrency, localMarketPrice < 1 ? 4 : 2)}</Text>
-              ) : null}
-              <TouchableOpacity style={styles.autofillBtn} onPress={autofillPrice}>
-                <Text style={styles.autofillText}>{t('use')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {selectedAsset ? (
+            <>
+              <FormRow label={`${t('purchase_date')} *`}>
+                <DatePickerField value={date} onChange={setDate} />
+              </FormRow>
 
-          <FormRow label={`${t('purchase_date')} *`}>
-            <DatePickerField value={date} onChange={setDate} />
-          </FormRow>
-
-          <FormRow label={`${t('amount')} *`}>
-            <View style={styles.inputWithSuffix}>
-              <TextInput
-                style={[styles.input, styles.borderlessInput]}
-                placeholder="0.00"
-                placeholderTextColor={Colors.textLight}
-                value={amount}
-                onChangeText={(v) => setAmount(v.replace(',', '.'))}
-                keyboardType="decimal-pad"
-              />
-              {selectedAsset && (
-                <View style={styles.inputSuffix}>
-                  <Text style={styles.inputSuffixText}>{selectedAsset.unit || selectedAsset.shortName}</Text>
+              <FormRow label={`${t('amount')} *`}>
+                <View style={styles.inputWithSuffix}>
+                  <TextInput
+                    style={[styles.input, styles.borderlessInput]}
+                    placeholder="0.00"
+                    placeholderTextColor={Colors.textLight}
+                    value={amount}
+                    onChangeText={(v) => setAmount(v.replace(',', '.'))}
+                    keyboardType="decimal-pad"
+                  />
+                  <View style={styles.inputSuffix}>
+                    <Text style={styles.inputSuffixText}>{selectedAsset.unit || selectedAsset.shortName}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
-          </FormRow>
+              </FormRow>
 
-          <FormRow label={`${t('purchase_price')} (${priceCurrency}) *`}>
-            {selectedAsset && (
-              <View style={styles.currencyTabs}>
-                {priceCurrencyOptions.map((currency) => (
-                  <TouchableOpacity
-                    key={currency}
-                    style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
-                    onPress={() => setPriceCurrency(currency)}
-                  >
-                    <Text style={[styles.currencyTabText, priceCurrency === currency && styles.currencyTabTextActive]}>
-                      {currency}
+              <FormRow label={`${t('purchase_price')} (${priceCurrency}) *`}>
+                <View style={styles.currencyTabs}>
+                  {priceCurrencyOptions.map((currency) => (
+                    <TouchableOpacity
+                      key={currency}
+                      style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
+                      onPress={() => setPriceCurrency(currency)}
+                    >
+                      <Text style={[styles.currencyTabText, priceCurrency === currency && styles.currencyTabTextActive]}>
+                        {currency}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {currentMarketPrice && (
+                  <View style={styles.marketPriceInfo}>
+                    <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.marketPriceText}>
+                      {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                    {priceCurrency !== 'USD' && currentMarketPriceUSD ? (
+                      <Text style={styles.marketPriceSub}>USD: {formatUSD(currentMarketPriceUSD, currentMarketPriceUSD < 1 ? 4 : 2)}</Text>
+                    ) : null}
+                    {priceCurrency !== localCurrency && localMarketPrice ? (
+                      <Text style={styles.marketPriceSub}>{localCurrency}: {formatCurrency(localMarketPrice, localCurrency, localMarketPrice < 1 ? 4 : 2)}</Text>
+                    ) : null}
+                    <TouchableOpacity style={styles.autofillBtn} onPress={autofillPrice}>
+                      <Text style={styles.autofillText}>{t('use')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-            <View style={styles.inputWithSuffix}>
-              <View style={styles.inputPrefix}>
-                <Text style={styles.inputPrefixText}>{getCurrencySymbol(priceCurrency)}</Text>
-              </View>
-              <TextInput
-                style={[styles.input, styles.borderlessInput, styles.noLeftRadius]}
-                placeholder="0.00"
-                placeholderTextColor={Colors.textLight}
-                value={buyPrice}
-                onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </FormRow>
+                <View style={styles.inputWithSuffix}>
+                  <View style={styles.inputPrefix}>
+                    <Text style={styles.inputPrefixText}>{getCurrencySymbol(priceCurrency)}</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.input, styles.borderlessInput, styles.noLeftRadius]}
+                    placeholder="0.00"
+                    placeholderTextColor={Colors.textLight}
+                    value={buyPrice}
+                    onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </FormRow>
+            </>
+          ) : null}
 
-          <View style={styles.footerSection}>
+          {selectedAsset ? <View style={styles.footerSection}>
             {totalCostUSD > 0 && (
               <View style={styles.totalPreview}>
                 <Text style={styles.totalPreviewLabel}>{t('total_cost')}</Text>
@@ -431,7 +431,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 )}
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </View> : null}
         </ScrollView>
       </KeyboardAvoidingView>
 

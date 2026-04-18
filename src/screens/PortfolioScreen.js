@@ -395,6 +395,9 @@ export default function PortfolioScreen({ navigation }) {
                       <Text style={styles.groupAmount}>
                         {formatCrypto(g.totalAmount)} · {t('average_short')} {formatUSD(g.avgBuyPrice, g.avgBuyPrice < 1 ? 4 : 2)}
                       </Text>
+                      <Text style={styles.groupCost}>
+                        {t('cost')}: {formatUSD(g.totalCostUSD)}
+                      </Text>
                     </View>
                     <View style={styles.groupRight}>
                       <Text style={styles.groupValue}>{formatUSD(g.totalCurrentUSD)}</Text>
@@ -407,7 +410,7 @@ export default function PortfolioScreen({ navigation }) {
                   </View>
                   {enrichedHoldings.filter((h) => h.assetId === g.assetId).map((h) => (
                     <View key={h.id} style={styles.subRow}>
-                      <Text style={styles.subDate}>{formatDate(h.date)}</Text>
+                      <Text style={styles.subDate}>{formatDate(h.buyDate) || '-'}</Text>
                       <Text style={styles.subAmount}>{formatCrypto(h.amount)} {t('quantity_unit')}</Text>
                       <Text style={styles.subBuyPrice}>{t('buy_price')}: {formatUSD(h.buyPriceUSD)}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -433,7 +436,7 @@ export default function PortfolioScreen({ navigation }) {
           <>
             {enrichedHoldings
               .slice()
-              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .sort((a, b) => new Date(b.buyDate) - new Date(a.buyDate))
               .map((h) => (
                 <HoldingRow key={h.id} holding={h} onDelete={deleteHolding} />
               ))}
@@ -705,6 +708,7 @@ const styles = StyleSheet.create({
   groupInfo: { flex: 1 },
   groupName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   groupAmount: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
+  groupCost: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   groupRight: { alignItems: 'flex-end', gap: 4 },
   groupValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
   groupPL: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },

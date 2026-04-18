@@ -194,6 +194,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const [buyPrice, setBuyPrice] = useState('');
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
+  const isUsdAsset = selectedAsset?.id === 'usd';
 
   const priceCurrencyOptions = useMemo(() => getLocalCurrencyOptions(localCurrency), [localCurrency]);
 
@@ -215,6 +216,12 @@ export default function AddInvestmentScreen({ navigation }) {
 
   useEffect(() => {
     if (!selectedAsset) return;
+    if (selectedAsset.id === 'usd') {
+      setPriceCurrency('USD');
+      setBuyPrice('1');
+      return;
+    }
+
     setPriceCurrency(localCurrency);
     setBuyPrice('');
   }, [localCurrency, selectedAsset?.id]);
@@ -224,8 +231,8 @@ export default function AddInvestmentScreen({ navigation }) {
     ? (priceCurrency === 'USD' ? currentMarketPriceUSD : convertUSDToCurrency(currentMarketPriceUSD, priceCurrency, prices))
     : null;
   const localMarketPrice = currentMarketPriceUSD ? convertUSDToCurrency(currentMarketPriceUSD, localCurrency, prices) : null;
-  const buyPriceNumber = parseFloat(buyPrice) || 0;
-  const buyPriceUSD = convertCurrencyToUSD(buyPriceNumber, priceCurrency, prices);
+  const buyPriceNumber = isUsdAsset ? 1 : (parseFloat(buyPrice) || 0);
+  const buyPriceUSD = isUsdAsset ? 1 : convertCurrencyToUSD(buyPriceNumber, priceCurrency, prices);
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
   const totalCostLocal = convertUSDToCurrency(totalCostUSD, localCurrency, prices);
@@ -233,6 +240,11 @@ export default function AddInvestmentScreen({ navigation }) {
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
 
   const autofillPrice = () => {
+    if (isUsdAsset) {
+      setBuyPrice('1');
+      return;
+    }
+
     if (!currentMarketPrice) {
       Alert.alert(t('price_unavailable'), t('price_unavailable_sub'));
       return;
@@ -243,7 +255,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const validate = () => {
     if (!selectedAsset) return t('select_asset_error');
     if (!amount || amountNumber <= 0) return t('valid_amount_error');
-    if (!buyPrice || buyPriceNumber <= 0) return t('valid_purchase_price_error');
+    if (!isUsdAsset && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
     if (!date) return t('select_date_error');
     return null;
   };
@@ -342,19 +354,21 @@ export default function AddInvestmentScreen({ navigation }) {
               </FormRow>
 
               <FormRow label={`${t('purchase_price')} (${priceCurrency}) *`}>
-                <View style={styles.currencyTabs}>
-                  {priceCurrencyOptions.map((currency) => (
-                    <TouchableOpacity
-                      key={currency}
-                      style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
-                      onPress={() => setPriceCurrency(currency)}
-                    >
-                      <Text style={[styles.currencyTabText, priceCurrency === currency && styles.currencyTabTextActive]}>
-                        {currency}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                {!isUsdAsset && (
+                  <View style={styles.currencyTabs}>
+                    {priceCurrencyOptions.map((currency) => (
+                      <TouchableOpacity
+                        key={currency}
+                        style={[styles.currencyTab, priceCurrency === currency && styles.currencyTabActive]}
+                        onPress={() => setPriceCurrency(currency)}
+                      >
+                        <Text style={[styles.currencyTabText, priceCurrency === currency && styles.currencyTabTextActive]}>
+                          {currency}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
                 {currentMarketPrice && (
                   <View style={styles.marketPriceInfo}>
@@ -385,8 +399,12 @@ export default function AddInvestmentScreen({ navigation }) {
                     value={buyPrice}
                     onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
                     keyboardType="decimal-pad"
+                    editable={!isUsdAsset}
                   />
                 </View>
+                {isUsdAsset ? (
+                  <Text style={styles.marketPriceSub}>USD varlığı için alış fiyatı sabit 1 USD'dir.</Text>
+                ) : null}
               </FormRow>
             </>
           ) : null}

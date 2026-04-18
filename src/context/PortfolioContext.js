@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { StorageService } from '../services/storage';
+import { apiClient } from '../services/apiClient';
 
 const PortfolioContext = createContext(null);
 
@@ -13,8 +13,9 @@ export const PortfolioProvider = ({ children }) => {
 
   const loadHoldings = async () => {
     try {
-      const data = await StorageService.getHoldings();
-      setHoldings(data);
+      const data = await apiClient.get('/investment/portfolio');
+      // Normalize _id → id so the rest of the app keeps using h.id
+      setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id })));
     } catch (e) {
       console.error('Load holdings error:', e);
     } finally {
@@ -23,19 +24,21 @@ export const PortfolioProvider = ({ children }) => {
   };
 
   const addHolding = async (holdingData) => {
-    const newHolding = await StorageService.addHolding(holdingData);
+    const data = await apiClient.post('/investment/portfolio', holdingData);
+    const newHolding = { ...data.holding, id: data.holding._id };
     setHoldings((prev) => [...prev, newHolding]);
     return newHolding;
   };
 
   const updateHolding = async (id, updates) => {
-    const updated = await StorageService.updateHolding(id, updates);
-    setHoldings(updated);
+    const data = await apiClient.put(`/investment/portfolio/${id}`, updates);
+    const updated = { ...data.holding, id: data.holding._id };
+    setHoldings((prev) => prev.map((h) => (h.id === id ? updated : h)));
   };
 
   const deleteHolding = async (id) => {
-    const filtered = await StorageService.deleteHolding(id);
-    setHoldings(filtered);
+    await apiClient.delete(`/investment/portfolio/${id}`);
+    setHoldings((prev) => prev.filter((h) => h.id !== id));
   };
 
   const computeStats = useCallback(

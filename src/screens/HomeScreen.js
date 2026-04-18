@@ -19,8 +19,6 @@ import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
 import { convertUSDToCurrency, formatCurrency, getEurUsd, getUsdTry } from '../utils/currency';
 
-const TROY_OZ = 31.1034768;
-
 function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, iconBg }) {
   const isPositive = change >= 0;
 
@@ -66,14 +64,9 @@ export default function HomeScreen() {
       'silver-gram': prices.metals?.silverGramUSD,
       'gold-oz': prices.metals?.goldOzUSD,
       'silver-oz': prices.metals?.silverOzUSD,
-      btc: prices.crypto?.bitcoin?.usd,
-      eth: prices.crypto?.ethereum?.usd,
-      bnb: prices.crypto?.binancecoin?.usd,
-      xrp: prices.crypto?.ripple?.usd,
-      sol: prices.crypto?.solana?.usd,
-      usdt: prices.crypto?.tether?.usd,
-      paxg: prices.crypto?.['pax-gold']?.usd,
-      xaut: prices.crypto?.['tether-gold']?.usd,
+      btc: prices.crypto?.btc?.usd,
+      bnb: prices.crypto?.bnb?.usd,
+      xrp: prices.crypto?.xrp?.usd,
       usd: 1,
       eur: prices.forex?.eurUsd,
     };
@@ -87,15 +80,15 @@ export default function HomeScreen() {
 
   const usdTry = getUsdTry(prices);
   const eurUsd = getEurUsd(prices);
-  const eurTry = prices?.forex?.eurTry || (usdTry / (1 / eurUsd));
-  const goldGramUSD = prices?.metals?.goldGramUSD || 106;
-  const silverGramUSD = prices?.metals?.silverGramUSD || 1.04;
-  const goldOzUSD = prices?.metals?.goldOzUSD || (goldGramUSD * TROY_OZ);
-  const silverOzUSD = prices?.metals?.silverOzUSD || (silverGramUSD * TROY_OZ);
+  const eurTry = prices?.forex?.eurTry;
+  const goldGramUSD = prices?.metals?.goldGramUSD;
+  const silverGramUSD = prices?.metals?.silverGramUSD;
+  const goldOzUSD = prices?.metals?.goldOzUSD;
+  const silverOzUSD = prices?.metals?.silverOzUSD;
 
-  const btcChange = prices?.crypto?.bitcoin?.change24h || 0;
-  const bnbChange = prices?.crypto?.binancecoin?.change24h || 0;
-  const xrpChange = prices?.crypto?.ripple?.change24h || 0;
+  const btcChange = prices?.crypto?.btc?.change24h;
+  const bnbChange = prices?.crypto?.bnb?.change24h;
+  const xrpChange = prices?.crypto?.xrp?.change24h;
 
   const lastUpdatedStr = lastUpdated
     ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
@@ -253,36 +246,36 @@ export default function HomeScreen() {
               <Text style={styles.sectionTitle}>{t('crypto')}</Text>
             </View>
 
-            {prices?.crypto?.bitcoin && (
+            {prices?.crypto?.btc && (
               <RateCard
                 label={t('bitcoin')}
                 subLabel="BTC / USD"
-                value={formatUSD(prices.crypto.bitcoin.usd)}
-                subValue={localSub(prices.crypto.bitcoin.usd, 2)}
+                value={formatUSD(prices.crypto.btc.usd)}
+                subValue={localSub(prices.crypto.btc.usd, 2)}
                 change={btcChange}
                 icon="logo-bitcoin"
                 iconColor="#F7931A"
                 iconBg="#FEF3C7"
               />
             )}
-            {prices?.crypto?.binancecoin && (
+            {prices?.crypto?.bnb && (
               <RateCard
                 label="BNB"
                 subLabel="BNB / USD"
-                value={formatUSD(prices.crypto.binancecoin.usd)}
-                subValue={localSub(prices.crypto.binancecoin.usd, 2)}
+                value={formatUSD(prices.crypto.bnb.usd)}
+                subValue={localSub(prices.crypto.bnb.usd, 2)}
                 change={bnbChange}
                 icon="cube-outline"
                 iconColor="#F0B90B"
                 iconBg="#FEF3C7"
               />
             )}
-            {prices?.crypto?.ripple && (
+            {prices?.crypto?.xrp && (
               <RateCard
                 label={t('ripple')}
                 subLabel="XRP / USD"
-                value={formatUSD(prices.crypto.ripple.usd, 4)}
-                subValue={localSub(prices.crypto.ripple.usd, 4)}
+                value={formatUSD(prices.crypto.xrp.usd, 4)}
+                subValue={localSub(prices.crypto.xrp.usd, 4)}
                 change={xrpChange}
                 icon="water-outline"
                 iconColor="#00AAE4"

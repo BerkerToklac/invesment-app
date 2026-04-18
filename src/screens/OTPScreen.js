@@ -15,16 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
-import { StorageService } from '../services/storage';
 
 const OTP_LENGTH = 6;
-// Demo mode: any 6-digit code works
-const DEMO_CODE = '123456';
 
 export default function OTPScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { email } = route.params;
-  const { login } = useAuth();
+  const { verifyLoginCode, sendLoginCode } = useAuth();
 
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -73,8 +70,6 @@ export default function OTPScreen({ route, navigation }) {
       Alert.alert('Eksik Kod', '6 haneli kodu tam girin.');
       return;
     }
-
-    // Demo: accept any 6-digit code
     if (!/^\d{6}$/.test(otpCode)) {
       Alert.alert('Geçersiz Kod', 'Lütfen sadece rakam girin.');
       return;
@@ -82,17 +77,15 @@ export default function OTPScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      // Daha önce kayıt olmuş ve profilini tamamlamış kullanıcı mı?
-      const existing = await StorageService.getUser();
-      if (existing && existing.email === email && existing.name) {
-        await login(email, existing.name, existing.age);
+      const user = await verifyLoginCode(email, otpCode);
+      if (user.profileCompleted) {
+        navigation.replace('App');
       } else {
-        // Yeni kullanıcı → Onboarding
         navigation.replace('Onboarding', { email });
       }
     } catch (e) {
-      Alert.alert('Hata', 'Doğrulama başarısız. Lütfen tekrar deneyin.');
+      const msg = e.status === 400 ? 'Kod hatalı veya süresi dolmuş.' : 'Doğrulama başarısız. Lütfen tekrar deneyin.';
+      Alert.alert('Hata', msg);
       setLoading(false);
     }
   };
@@ -103,7 +96,12 @@ export default function OTPScreen({ route, navigation }) {
     setCanResend(false);
     setOtp(Array(OTP_LENGTH).fill(''));
     inputs.current[0]?.focus();
-    Alert.alert('Kod Gönderildi', `${email} adresine yeni kod gönderildi.\n\n(Demo: Herhangi 6 rakam girin)`);
+    try {
+      await sendLoginCode(email);
+      Alert.alert('Kod Gönderildi', `${email} adresine yeni kod gönderildi.`);
+    } catch (e) {
+      Alert.alert('Hata', 'Kod gönderilemedi. Lütfen tekrar deneyin.');
+    }
   };
 
   const maskedEmail = email.replace(/(.{2})(.+)(@.+)/, (_, a, b, c) => a + '*'.repeat(b.length) + c);
@@ -129,10 +127,6 @@ export default function OTPScreen({ route, navigation }) {
             <Text style={styles.emailText}>{maskedEmail}</Text>
             {'\n'}adresine 6 haneli kod gönderdik.
           </Text>
-          <View style={styles.demoBadge}>
-            <Ionicons name="information-circle" size={14} color={Colors.warning} />
-            <Text style={styles.demoText}>Demo: Herhangi 6 rakam girin</Text>
-          </View>
         </View>
 
         {/* OTP Input */}

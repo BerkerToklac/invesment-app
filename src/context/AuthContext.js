@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
+import { apiClient, saveToken, removeToken } from '../services/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -22,35 +23,57 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // email zorunlu, name/age onboarding'den gelir
-  const login = async (email, name = null, age = null) => {
-    const userData = {
+  // Step 1: request a login code from the backend
+  const sendLoginCode = async (email) => {
+    await apiClient.post('/users/getLoginCode', { email, app: 'investment' });
+  };
+
+  // Step 2: verify the code; stores token + user on success
+  const verifyLoginCode = async (email, code) => {
+    const data = await apiClient.post('/users/verifyLoginCode', {
       email,
-      name,
-      age,
-      loggedAt: new Date().toISOString(),
-    };
+      app: 'investment',
+      loginCode: code,
+    });
+    await saveToken(data.token);
+    const userData = { ...data.user, loggedAt: new Date().toISOString() };
     await StorageService.saveUser(userData);
     setUser(userData);
+    return userData;
   };
 
   const updateProfile = async (name, age) => {
-    const updated = await StorageService.updateUser({ name, age });
-    setUser(updated);
+    const data = await apiClient.put('/investment/profile', { name, age });
+    const merged = {
+      ...(user || {}),
+      ...data.user,
+      loggedAt: user?.loggedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await StorageService.saveUser(merged);
+    setUser(merged);
+    return merged;
   };
 
   const logout = async () => {
+    await removeToken();
     await StorageService.removeUser();
     setUser(null);
   };
 
   const deleteAccount = async () => {
+    try {
+      await apiClient.delete('/users/me');
+    } catch (e) {
+      console.error('Delete account API error:', e);
+    }
+    await removeToken();
     await StorageService.deleteAllData();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, updateProfile, logout, deleteAccount }}>
+    <AuthContext.Provider value={{ user, loading, sendLoginCode, verifyLoginCode, updateProfile, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

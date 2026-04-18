@@ -3,24 +3,36 @@ import { formatEUR, formatTRY, formatUSD } from './formatters';
 export const LOCAL_CURRENCY_OPTIONS = ['TRY', 'EUR', 'USD'];
 
 export function getUsdTry(prices) {
-  return prices?.forex?.usdTry || 38.5;
+  return prices?.forex?.usdTry ?? null;
 }
 
 export function getEurUsd(prices) {
-  return prices?.forex?.eurUsd || 1.086;
+  return prices?.forex?.eurUsd ?? null;
 }
 
 export function convertUSDToCurrency(value, currency, prices) {
   const amount = Number(value) || 0;
-  if (currency === 'TRY') return amount * getUsdTry(prices);
-  if (currency === 'EUR') return amount / getEurUsd(prices);
+  if (currency === 'TRY') {
+    const rate = getUsdTry(prices);
+    return rate != null ? amount * rate : null;
+  }
+  if (currency === 'EUR') {
+    const rate = getEurUsd(prices);
+    return rate != null ? amount / rate : null;
+  }
   return amount;
 }
 
 export function convertCurrencyToUSD(value, currency, prices) {
   const amount = Number(value) || 0;
-  if (currency === 'TRY') return amount / getUsdTry(prices);
-  if (currency === 'EUR') return amount * getEurUsd(prices);
+  if (currency === 'TRY') {
+    const rate = getUsdTry(prices);
+    return rate != null ? amount / rate : null;
+  }
+  if (currency === 'EUR') {
+    const rate = getEurUsd(prices);
+    return rate != null ? amount * rate : null;
+  }
   return amount;
 }
 

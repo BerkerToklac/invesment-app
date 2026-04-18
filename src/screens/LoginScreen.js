@@ -17,14 +17,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 
+import { useAuth } from '../context/AuthContext';
+
 const { width } = Dimensions.get('window');
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-const sendOTP = async () => new Promise((r) => setTimeout(r, 900));
-
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { sendLoginCode } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -84,7 +85,7 @@ export default function LoginScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      await sendOTP();
+      await sendLoginCode(email.trim().toLowerCase());
       navigation.navigate('OTP', { email: email.trim().toLowerCase() });
     } catch {
       Alert.alert('Hata', 'Kod gönderilemedi. Lütfen tekrar deneyin.');

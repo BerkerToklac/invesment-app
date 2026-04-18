@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 export default function OnboardingScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { email } = route.params;
-  const { login } = useAuth();
+  const { updateProfile } = useAuth();
 
   const [name, setName]   = useState('');
   const [age, setAge]     = useState('');
@@ -79,7 +79,8 @@ export default function OnboardingScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
-      await login(email, name.trim(), age ? parsedAge : null);
+      await updateProfile(name.trim(), age ? parsedAge : null);
+      navigation.replace('App');
     } catch (e) {
       Alert.alert('Hata', 'Profil kaydedilemedi.');
       setLoading(false);

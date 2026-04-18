@@ -1,140 +1,60 @@
 import { TROY_OZ_TO_GRAM } from '../utils/assets';
 
-const FALLBACK_PRICES = {
-  usdTry: 38.5,
-  eurTry: 41.8,
-  eurUsd: 1.086,
-  goldGramUSD: 106.0,
-  silverGramUSD: 1.04,
-  crypto: {
-    bitcoin: 83000,
-    ethereum: 1900,
-    binancecoin: 593,
-    ripple: 1.32,
-    solana: 135,
-    tether: 1.0,
-    'pax-gold': 3300,
-    'tether-gold': 3295,
-  },
-};
+// Backend base URL — OpenExchangeRates (döviz+metaller) ve CoinMarketCap
+// (kripto) verilerini saatte bir / 5 dakikada bir çekerek DB'de saklar.
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://project1-be-1.onrender.com';
 
-let cachedPrices = null;
-let lastFetchTime = 0;
-const CACHE_DURATION     = 3 * 60 * 1000;  // 3 dakika — normal yenileme
-const MIN_FORCE_INTERVAL = 30 * 1000;       // pull-to-refresh arası min 30sn
+function transformResponse(json) {
+  const ratesData = json.rates?.data || {};
 
-export const MarketAPI = {
-  // ── 1. Döviz Kurları ──────────────────────────────────────────────────────
-  async fetchForexRates() {
-    try {
-      const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY,EUR', {
-        headers: { Accept: 'application/json' },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const eurPerUsd = data.rates?.EUR;
-      const tryPerUsd = data.rates?.TRY;
-      return {
-        usdTry: tryPerUsd || FALLBACK_PRICES.usdTry,
-        eurUsd: eurPerUsd ? 1 / eurPerUsd : FALLBACK_PRICES.eurUsd,
-        eurTry: eurPerUsd && tryPerUsd ? tryPerUsd / eurPerUsd : FALLBACK_PRICES.eurTry,
-      };
-    } catch (e) {
-      console.warn('Forex fetch failed, using fallback:', e.message);
-      return {
-        usdTry: FALLBACK_PRICES.usdTry,
-        eurUsd: FALLBACK_PRICES.eurUsd,
-        eurTry: FALLBACK_PRICES.eurTry,
+  const usdTry  = ratesData.TRY  ?? null;
+  const eurRaw  = ratesData.EUR  ?? null; // 1 USD = eurRaw EUR
+  const eurUsd  = eurRaw  ? 1 / eurRaw  : null;
+  const eurTry  = (usdTry != null && eurRaw != null) ? usdTry / eurRaw : null;
+
+  const xauRaw      = ratesData.XAU ?? null; // 1 USD = xauRaw troy oz gold
+  const xagRaw      = ratesData.XAG ?? null;
+  const goldOzUSD   = xauRaw ? 1 / xauRaw : null;
+  const silverOzUSD = xagRaw ? 1 / xagRaw : null;
+  const goldGramUSD   = goldOzUSD   != null ? goldOzUSD   / TROY_OZ_TO_GRAM : null;
+  const silverGramUSD = silverOzUSD != null ? silverOzUSD / TROY_OZ_TO_GRAM : null;
+
+  const crypto = {};
+  (json.crypto?.data || []).forEach((q) => {
+    const symbol = q.symbol?.toLowerCase();
+    if (symbol) {
+      crypto[symbol] = {
+        usd: q.price ?? null,
+        change24h: q.percentChange24h ?? null,
       };
     }
-  },
+  });
 
-  // ── 2. Kripto Fiyatları (PAXG altın için de kullanılır) ───────────────────
-  async fetchCryptoPrices() {
-    const ids = 'bitcoin,ethereum,binancecoin,ripple,solana,tether,pax-gold,tether-gold';
-    try {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
-        { headers: { Accept: 'application/json' } }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const result = {};
-      Object.keys(data).forEach((key) => {
-        result[key] = {
-          usd: data[key].usd,
-          change24h: data[key].usd_24h_change || 0,
-        };
-      });
-      return result;
-    } catch (e) {
-      // 429: rate limit — son cache varsa onu dön, hardcoded'a düşme
-      if (e.message.includes('429') && cachedPrices?.crypto) {
-        console.warn('CoinGecko rate limit, önbellek kullanılıyor.');
-        return cachedPrices.crypto;
-      }
-      console.warn('Crypto fetch failed, using fallback:', e.message);
-      const result = {};
-      Object.keys(FALLBACK_PRICES.crypto).forEach((key) => {
-        result[key] = { usd: FALLBACK_PRICES.crypto[key], change24h: 0 };
-      });
-      return result;
-    }
-  },
-
-  // ── 4. Tüm Fiyatlar ───────────────────────────────────────────────────────
-  async fetchAllPrices(forceRefresh = false) {
-    const now = Date.now();
-    const elapsed = now - lastFetchTime;
-
-    // Normal cache kontrolü
-    if (!forceRefresh && cachedPrices && elapsed < CACHE_DURATION) {
-      return cachedPrices;
-    }
-    // Force refresh bile olsa 30sn geçmemişse beklet (rate limit koruması)
-    if (forceRefresh && cachedPrices && elapsed < MIN_FORCE_INTERVAL) {
-      return cachedPrices;
-    }
-
-    // Forex ve kripto paralel çekilir — ayrı metals API yok
-    const [forex, crypto] = await Promise.all([
-      this.fetchForexRates(),
-      this.fetchCryptoPrices(),
-    ]);
-
-    // Altın: 1 PAXG = 1 troy oz altın (CoinGecko'dan geliyor, sıfır ekstra istek)
-    const goldOzUSD   = crypto?.['pax-gold']?.usd ?? FALLBACK_PRICES.goldGramUSD * TROY_OZ_TO_GRAM;
-    const goldGramUSD = goldOzUSD / TROY_OZ_TO_GRAM;
-
-    // Gümüş: altın/gümüş oranından türetilir.
-    // Ücretsiz & çalışan bir gümüş API'si yok (metals.live→kapalı,
-    // goldprice.org→403, Yahoo→401). Oran tarihsel olarak 80–105 arası
-    // değişir; 90 makul bir ortalama.
-    const GOLD_SILVER_RATIO = 90;
-    const silverOzUSD   = goldOzUSD / GOLD_SILVER_RATIO;
-    const silverGramUSD = silverOzUSD / TROY_OZ_TO_GRAM;
-
-    const metals = {
+  return {
+    forex: { usdTry, eurUsd, eurTry },
+    metals: {
       goldOzUSD,
       silverOzUSD,
       goldGramUSD,
       silverGramUSD,
-    };
+      goldGramTRY:   (goldGramUSD   != null && usdTry != null) ? goldGramUSD   * usdTry : null,
+      silverGramTRY: (silverGramUSD != null && usdTry != null) ? silverGramUSD * usdTry : null,
+    },
+    crypto,
+    ratesUpdatedAt:  json.rates?.fetchedAt  ?? null,
+    cryptoUpdatedAt: json.crypto?.fetchedAt ?? null,
+    lastUpdated: new Date().toISOString(),
+  };
+}
 
-    const prices = {
-      forex,
-      metals: {
-        ...metals,
-        goldGramTRY:  metals.goldGramUSD  * forex.usdTry,
-        silverGramTRY: metals.silverGramUSD * forex.usdTry,
-      },
-      crypto,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    cachedPrices = prices;
-    lastFetchTime = now;
-    return prices;
+export const MarketAPI = {
+  async fetchAllPrices() {
+    const res = await fetch(`${BACKEND_URL}/investment/market`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return transformResponse(json);
   },
 
   // ── Yardımcı: Varlık güncel USD fiyatı ───────────────────────────────────
@@ -145,22 +65,9 @@ export const MarketAPI = {
       'silver-gram': prices.metals?.silverGramUSD,
       'gold-oz':     prices.metals?.goldOzUSD,
       'silver-oz':   prices.metals?.silverOzUSD,
-      bitcoin:       prices.crypto?.bitcoin?.usd,
-      btc:           prices.crypto?.bitcoin?.usd,
-      ethereum:      prices.crypto?.ethereum?.usd,
-      eth:           prices.crypto?.ethereum?.usd,
-      bnb:           prices.crypto?.binancecoin?.usd,
-      binancecoin:   prices.crypto?.binancecoin?.usd,
-      xrp:           prices.crypto?.ripple?.usd,
-      ripple:        prices.crypto?.ripple?.usd,
-      sol:           prices.crypto?.solana?.usd,
-      solana:        prices.crypto?.solana?.usd,
-      usdt:          prices.crypto?.tether?.usd,
-      tether:        prices.crypto?.tether?.usd,
-      paxg:          prices.crypto?.['pax-gold']?.usd,
-      'pax-gold':    prices.crypto?.['pax-gold']?.usd,
-      xaut:          prices.crypto?.['tether-gold']?.usd,
-      'tether-gold': prices.crypto?.['tether-gold']?.usd,
+      btc:           prices.crypto?.btc?.usd,
+      bnb:           prices.crypto?.bnb?.usd,
+      xrp:           prices.crypto?.xrp?.usd,
       usd:           1,
       eur:           prices.forex?.eurUsd,
     };
@@ -168,18 +75,7 @@ export const MarketAPI = {
   },
 
   getAsset24hChange(assetId, prices) {
-    if (!prices) return 0;
-    const cryptoMap = {
-      btc:  'bitcoin',
-      eth:  'ethereum',
-      bnb:  'binancecoin',
-      xrp:  'ripple',
-      sol:  'solana',
-      usdt: 'tether',
-      paxg: 'pax-gold',
-      xaut: 'tether-gold',
-    };
-    const geckoId = cryptoMap[assetId] || assetId;
-    return prices.crypto?.[geckoId]?.change24h || 0;
+    if (!prices) return null;
+    return prices.crypto?.[assetId]?.change24h ?? null;
   },
 };

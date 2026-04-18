@@ -10,10 +10,10 @@ export const MarketProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchPrices = useCallback(async (forceRefresh = false) => {
+  const fetchPrices = useCallback(async () => {
     try {
       setError(null);
-      const data = await MarketAPI.fetchAllPrices(forceRefresh);
+      const data = await MarketAPI.fetchAllPrices();
       setPrices(data);
       setLastUpdated(new Date());
     } catch (e) {
@@ -30,14 +30,15 @@ export const MarketProvider = ({ children }) => {
     };
     init();
 
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(() => fetchPrices(true), 60 * 1000);
+    // Backend verileri zaten kendi zamanlamasıyla güncelleniyor; biz sadece
+    // 5 dakikada bir yeni anlık görüntüyü çekiyoruz.
+    const interval = setInterval(fetchPrices, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchPrices]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await fetchPrices(true);
+    await fetchPrices();
     setRefreshing(false);
   };
 

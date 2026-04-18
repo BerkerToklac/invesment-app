@@ -24,7 +24,7 @@ import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
 import { PREDEFINED_ASSETS, getLocalizedAssetName } from '../utils/assets';
 import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
+import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions, getUsdTry, getEurUsd } from '../utils/currency';
 
 const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
 
@@ -269,6 +269,30 @@ export default function AddInvestmentScreen({ navigation }) {
 
     setLoading(true);
     try {
+      let buyLocalCurrency = null;
+      let buyFxLocalPerUSD = null;
+      let buyLocalTotal = null;
+
+      if (isUsdAsset) {
+        buyLocalCurrency = localCurrency;
+        if (localCurrency === 'TRY') {
+          buyFxLocalPerUSD = getUsdTry(prices);
+        } else if (localCurrency === 'EUR') {
+          const eurUsd = getEurUsd(prices);
+          buyFxLocalPerUSD = eurUsd != null ? (1 / eurUsd) : null;
+        } else {
+          buyFxLocalPerUSD = 1;
+        }
+
+        if (buyFxLocalPerUSD == null) {
+          Alert.alert(t('error'), 'Kur verisi alınamadı, USD işlemi kaydedilemedi.');
+          setLoading(false);
+          return;
+        }
+
+        buyLocalTotal = amountNumber * buyFxLocalPerUSD;
+      }
+
       await addHolding({
         assetId: selectedAsset.id,
         assetName: selectedAsset.name,
@@ -278,6 +302,9 @@ export default function AddInvestmentScreen({ navigation }) {
         buyDate: toIstanbulDateStr(date),
         amount: amountNumber,
         buyPriceUSD,
+        buyLocalCurrency,
+        buyFxLocalPerUSD,
+        buyLocalTotal,
         note: '',
       });
 

@@ -18,7 +18,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent, formatCrypto, formatDate } from '../utils/formatters';
-import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { convertUSDToCurrency, formatCurrency, getUsdTry, getEurUsd } from '../utils/currency';
 
 function DonutChart({ data, total, size = 180 }) {
   const radius = size / 2 - 20;
@@ -223,6 +223,14 @@ export default function PortfolioScreen({ navigation }) {
       .sort((a, b) => b.totalUSD - a.totalUSD);
   }, [grouped, localCurrency, prices, t, totalCurrentUSD]);
   const isPositive = totalPLUSD >= 0;
+  const currentLocalPerUsd = useMemo(() => {
+    if (localCurrency === 'TRY') return getUsdTry(prices);
+    if (localCurrency === 'EUR') {
+      const eurUsd = getEurUsd(prices);
+      return eurUsd != null ? (1 / eurUsd) : null;
+    }
+    return 1;
+  }, [localCurrency, prices]);
 
   if (holdings.length === 0) {
     return (
@@ -398,6 +406,20 @@ export default function PortfolioScreen({ navigation }) {
                       <Text style={styles.groupCost}>
                         {t('cost')}: {formatUSD(g.totalCostUSD)}
                       </Text>
+                      {g.assetId === 'usd' && currentLocalPerUsd != null ? (() => {
+                        const usdRows = enrichedHoldings.filter((h) => h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null);
+                        const groupBuyLocalTotal = usdRows.reduce((sum, row) => sum + (row.buyLocalTotal || 0), 0);
+                        const currentLocalTotal = (g.totalAmount || 0) * currentLocalPerUsd;
+                        const localPl = currentLocalTotal - groupBuyLocalTotal;
+                        const localPlPct = groupBuyLocalTotal > 0 ? (localPl / groupBuyLocalTotal) * 100 : 0;
+                        const localUp = localPl >= 0;
+
+                        return (
+                          <Text style={[styles.groupLocalPl, { color: localUp ? Colors.success : Colors.danger }]}>
+                            Kur P/L ({localCurrency}): {localPl >= 0 ? '+' : ''}{formatCurrency(localPl, localCurrency)} ({formatPercent(localPlPct)})
+                          </Text>
+                        );
+                      })() : null}
                     </View>
                     <View style={styles.groupRight}>
                       <Text style={styles.groupValue}>{formatUSD(g.totalCurrentUSD)}</Text>
@@ -413,6 +435,16 @@ export default function PortfolioScreen({ navigation }) {
                       <Text style={styles.subDate}>{formatDate(h.buyDate) || '-'}</Text>
                       <Text style={styles.subAmount}>{formatCrypto(h.amount)} {t('quantity_unit')}</Text>
                       <Text style={styles.subBuyPrice}>{t('buy_price')}: {formatUSD(h.buyPriceUSD)}</Text>
+                      {h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null && currentLocalPerUsd != null ? (() => {
+                        const localCurrent = (h.amount || 0) * currentLocalPerUsd;
+                        const localPl = localCurrent - h.buyLocalTotal;
+                        const localUp = localPl >= 0;
+                        return (
+                          <Text style={[styles.subLocalPl, { color: localUp ? Colors.success : Colors.danger }]}> 
+                            Kur: {localPl >= 0 ? '+' : ''}{formatCurrency(localPl, localCurrency)}
+                          </Text>
+                        );
+                      })() : null}
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.subCurrent}>{formatUSD(h.currentUSD)}</Text>
                         <TouchableOpacity
@@ -709,6 +741,7 @@ const styles = StyleSheet.create({
   groupName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   groupAmount: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
   groupCost: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  groupLocalPl: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   groupRight: { alignItems: 'flex-end', gap: 4 },
   groupValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
   groupPL: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
@@ -727,6 +760,7 @@ const styles = StyleSheet.create({
   subDate: { fontSize: 11, color: Colors.textLight, width: 70 },
   subAmount: { fontSize: 11, color: Colors.textSecondary, flex: 1 },
   subBuyPrice: { fontSize: 11, color: Colors.textSecondary },
+  subLocalPl: { fontSize: 11, fontWeight: '600' },
   subCurrent: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
 
   holdingRow: {

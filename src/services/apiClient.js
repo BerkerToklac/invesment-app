@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://project1-be-1.onrender.com';
 const TOKEN_KEY   = '@portfoy_token';
 
 async function getToken() {
@@ -16,6 +16,10 @@ export async function removeToken() {
 }
 
 async function request(path, options = {}) {
+  if (!BACKEND_URL) {
+    throw new Error('Backend URL is not configured (EXPO_PUBLIC_BACKEND_URL).');
+  }
+
   const token = await getToken();
 
   const headers = {

@@ -1,18 +1,37 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../services/apiClient';
+import { useAuth } from './AuthContext';
 
 const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [holdings, setHoldings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      setHoldings([]);
+      setLoading(false);
+      return;
+    }
+
     loadHoldings();
-  }, []);
+  }, [user, authLoading]);
 
   const loadHoldings = async () => {
+    if (!user) {
+      setHoldings([]);
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       const data = await apiClient.get('/investment/portfolio');
       // Normalize _id → id so the rest of the app keeps using h.id
       setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id })));
@@ -24,6 +43,7 @@ export const PortfolioProvider = ({ children }) => {
   };
 
   const addHolding = async (holdingData) => {
+    if (!user) throw new Error('Not authenticated');
     const data = await apiClient.post('/investment/portfolio', holdingData);
     const newHolding = { ...data.holding, id: data.holding._id };
     setHoldings((prev) => [...prev, newHolding]);
@@ -31,12 +51,14 @@ export const PortfolioProvider = ({ children }) => {
   };
 
   const updateHolding = async (id, updates) => {
+    if (!user) throw new Error('Not authenticated');
     const data = await apiClient.put(`/investment/portfolio/${id}`, updates);
     const updated = { ...data.holding, id: data.holding._id };
     setHoldings((prev) => prev.map((h) => (h.id === id ? updated : h)));
   };
 
   const deleteHolding = async (id) => {
+    if (!user) throw new Error('Not authenticated');
     await apiClient.delete(`/investment/portfolio/${id}`);
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   };

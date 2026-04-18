@@ -24,7 +24,7 @@ import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
 import { PREDEFINED_ASSETS, getLocalizedAssetName } from '../utils/assets';
 import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions, getUsdTry, getEurUsd } from '../utils/currency';
+import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
 
 const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
 
@@ -217,8 +217,8 @@ export default function AddInvestmentScreen({ navigation }) {
   useEffect(() => {
     if (!selectedAsset) return;
     if (selectedAsset.id === 'usd') {
-      setPriceCurrency('USD');
-      setBuyPrice('1');
+      setPriceCurrency(localCurrency);
+      setBuyPrice(localCurrency === 'USD' ? '1' : '');
       return;
     }
 
@@ -231,7 +231,9 @@ export default function AddInvestmentScreen({ navigation }) {
     ? (priceCurrency === 'USD' ? currentMarketPriceUSD : convertUSDToCurrency(currentMarketPriceUSD, priceCurrency, prices))
     : null;
   const localMarketPrice = currentMarketPriceUSD ? convertUSDToCurrency(currentMarketPriceUSD, localCurrency, prices) : null;
-  const buyPriceNumber = isUsdAsset ? 1 : (parseFloat(buyPrice) || 0);
+  const buyPriceNumber = isUsdAsset
+    ? (localCurrency === 'USD' ? 1 : (parseFloat(buyPrice) || 0))
+    : (parseFloat(buyPrice) || 0);
   const buyPriceUSD = isUsdAsset ? 1 : convertCurrencyToUSD(buyPriceNumber, priceCurrency, prices);
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
@@ -241,7 +243,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
   const autofillPrice = () => {
     if (isUsdAsset) {
-      setBuyPrice('1');
+      Alert.alert(t('info') || 'Bilgi', 'USD varlığında alış kuru manuel girilir.');
       return;
     }
 
@@ -255,6 +257,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const validate = () => {
     if (!selectedAsset) return t('select_asset_error');
     if (!amount || amountNumber <= 0) return t('valid_amount_error');
+    if (isUsdAsset && localCurrency !== 'USD' && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
     if (!isUsdAsset && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
     if (!date) return t('select_date_error');
     return null;
@@ -275,17 +278,10 @@ export default function AddInvestmentScreen({ navigation }) {
 
       if (isUsdAsset) {
         buyLocalCurrency = localCurrency;
-        if (localCurrency === 'TRY') {
-          buyFxLocalPerUSD = getUsdTry(prices);
-        } else if (localCurrency === 'EUR') {
-          const eurUsd = getEurUsd(prices);
-          buyFxLocalPerUSD = eurUsd != null ? (1 / eurUsd) : null;
-        } else {
-          buyFxLocalPerUSD = 1;
-        }
+        buyFxLocalPerUSD = localCurrency === 'USD' ? 1 : buyPriceNumber;
 
         if (buyFxLocalPerUSD == null) {
-          Alert.alert(t('error'), 'Kur verisi alınamadı, USD işlemi kaydedilemedi.');
+          Alert.alert(t('error'), 'Alış kuru girilmedi, USD işlemi kaydedilemedi.');
           setLoading(false);
           return;
         }
@@ -380,7 +376,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 </View>
               </FormRow>
 
-              <FormRow label={`${t('purchase_price')} (${priceCurrency}) *`}>
+              <FormRow label={isUsdAsset ? `Alış Kuru (${localCurrency}/USD) *` : `${t('purchase_price')} (${priceCurrency}) *`}>
                 {!isUsdAsset && (
                   <View style={styles.currencyTabs}>
                     {priceCurrencyOptions.map((currency) => (
@@ -397,7 +393,7 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                 )}
 
-                {currentMarketPrice && (
+                {!isUsdAsset && currentMarketPrice && (
                   <View style={styles.marketPriceInfo}>
                     <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
                     <Text style={styles.marketPriceText}>
@@ -415,6 +411,16 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                 )}
 
+                {isUsdAsset && localCurrency !== 'USD' && currentMarketPrice && (
+                  <View style={styles.marketPriceInfo}>
+                    <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.marketPriceText}>
+                      Referans güncel kur: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, 2)}</Text>
+                    </Text>
+                    <Text style={styles.marketPriceSub}>Geçmiş işlemin için alış kurunu elle girebilirsin.</Text>
+                  </View>
+                )}
+
                 <View style={styles.inputWithSuffix}>
                   <View style={styles.inputPrefix}>
                     <Text style={styles.inputPrefixText}>{getCurrencySymbol(priceCurrency)}</Text>
@@ -426,11 +432,13 @@ export default function AddInvestmentScreen({ navigation }) {
                     value={buyPrice}
                     onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
                     keyboardType="decimal-pad"
-                    editable={!isUsdAsset}
+                    editable={!(isUsdAsset && localCurrency === 'USD')}
                   />
                 </View>
                 {isUsdAsset ? (
-                  <Text style={styles.marketPriceSub}>USD varlığı için alış fiyatı sabit 1 USD'dir.</Text>
+                  <Text style={styles.marketPriceSub}>
+                    USD birim fiyatı sabit 1 USD. Bu alanda 1 USD'nin {localCurrency} karşılığını giriyorsun.
+                  </Text>
                 ) : null}
               </FormRow>
             </>

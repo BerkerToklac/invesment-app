@@ -63,6 +63,12 @@ export const PortfolioProvider = ({ children }) => {
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   };
 
+  const deleteUsdHoldings = async () => {
+    if (!user) throw new Error('Not authenticated');
+    await apiClient.delete('/investment/portfolio/usd/all');
+    setHoldings((prev) => prev.filter((h) => h.assetId !== 'usd'));
+  };
+
   const computeStats = useCallback(
     (getAssetPrice) => {
       let totalCostUSD = 0;
@@ -147,6 +153,7 @@ export const PortfolioProvider = ({ children }) => {
         addHolding,
         updateHolding,
         deleteHolding,
+        deleteUsdHoldings,
         computeStats,
         getGroupedHoldings,
         reload: loadHoldings,

@@ -408,8 +408,11 @@ export default function PortfolioScreen({ navigation }) {
                       </Text>
                       {g.assetId === 'usd' && currentLocalPerUsd != null ? (() => {
                         const usdRows = enrichedHoldings.filter((h) => h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null);
+                        if (usdRows.length === 0) return null;
+
+                        const groupAmountForLocal = usdRows.reduce((sum, row) => sum + (row.amount || 0), 0);
                         const groupBuyLocalTotal = usdRows.reduce((sum, row) => sum + (row.buyLocalTotal || 0), 0);
-                        const currentLocalTotal = (g.totalAmount || 0) * currentLocalPerUsd;
+                        const currentLocalTotal = groupAmountForLocal * currentLocalPerUsd;
                         const localPl = currentLocalTotal - groupBuyLocalTotal;
                         const localPlPct = groupBuyLocalTotal > 0 ? (localPl / groupBuyLocalTotal) * 100 : 0;
                         const localUp = localPl >= 0;

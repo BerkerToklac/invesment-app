@@ -46,7 +46,7 @@ function SectionHeader({ title }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, deleteHolding } = usePortfolio();
+  const { holdings, deleteHolding, deleteUsdHoldings } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
   const { localCurrency, setLocalCurrency, language, setLanguage, t } = useSettings();
 
@@ -95,6 +95,37 @@ export default function SettingsScreen() {
               await deleteHolding(h.id);
             }
             Alert.alert(t('success'), t('all_investments_deleted'));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLocalCurrencyChange = (nextCurrency) => {
+    if (nextCurrency === localCurrency) return;
+
+    const hasUsdHoldings = holdings.some((h) => h.assetId === 'usd');
+    if (!hasUsdHoldings) {
+      setLocalCurrency(nextCurrency);
+      return;
+    }
+
+    Alert.alert(
+      'Local Para Birimi Değişikliği',
+      'Local para birimini değiştirirsen mevcut USD pozisyonların silinecek. Bu işlem geri alınamaz. Devam edilsin mi?',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: 'Evet, Sil ve Değiştir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteUsdHoldings();
+              await setLocalCurrency(nextCurrency);
+              Alert.alert(t('success'), 'USD pozisyonları silindi ve local para birimi güncellendi.');
+            } catch (err) {
+              Alert.alert(t('error'), 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
+            }
           },
         },
       ]
@@ -181,7 +212,7 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 key={currency}
                 style={[styles.currencyOption, localCurrency === currency && styles.currencyOptionActive]}
-                onPress={() => setLocalCurrency(currency)}
+                onPress={() => handleLocalCurrencyChange(currency)}
               >
                 <Text style={[styles.currencyOptionText, localCurrency === currency && styles.currencyOptionTextActive]}>
                   {currency}

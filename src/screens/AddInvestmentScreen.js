@@ -263,12 +263,10 @@ export default function AddInvestmentScreen({ navigation }) {
         type: selectedAsset.type,
         emoji: selectedAsset.emoji,
         color: selectedAsset.color,
-        date: toIstanbulDateStr(date),
+        buyDate: toIstanbulDateStr(date),
         amount: amountNumber,
         buyPriceUSD,
-        buyPriceInput: buyPriceNumber,
-        buyPriceCurrency: priceCurrency,
-        notes: '',
+        note: '',
       });
 
       Alert.alert(t('success'), `${selectedAsset.name} ${t('added_to_portfolio')}`, [

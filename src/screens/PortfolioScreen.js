@@ -155,7 +155,7 @@ function HoldingRow({ holding, onDelete }) {
           </View>
         </View>
         <Text style={styles.holdingMeta}>
-          Alış: {formatUSD(holding.buyPriceUSD)} · Maliyet: {formatUSD(holding.costUSD)} · {formatDate(holding.date)}
+          Alış: {formatUSD(holding.buyPriceUSD)} · Maliyet: {formatUSD(holding.costUSD)} · Tarih: {formatDate(holding.buyDate) || '-'}
         </Text>
       </View>
     </TouchableOpacity>

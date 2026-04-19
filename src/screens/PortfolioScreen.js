@@ -114,10 +114,19 @@ function CategoryRow({ label, usdValue, localValue, percent, color, icon }) {
   );
 }
 
-function HoldingRow({ holding, onDelete }) {
+function HoldingRow({ holding, onDelete, localCurrency, prices }) {
   const pl = holding.plUSD || 0;
   const plPct = holding.plPercent || 0;
   const isUp = pl >= 0;
+  const currentLocal = convertUSDToCurrency(holding.currentUSD || 0, localCurrency, prices);
+  const costLocal =
+    holding.assetId === 'usd' && holding.buyLocalCurrency === localCurrency && holding.buyLocalTotal != null
+      ? holding.buyLocalTotal
+      : convertUSDToCurrency(holding.costUSD || 0, localCurrency, prices);
+  const buyLabel =
+    holding.assetId === 'usd' && holding.buyLocalCurrency && holding.buyFxLocalPerUSD != null
+      ? `Alış Kuru: 1 USD = ${formatCurrency(holding.buyFxLocalPerUSD, holding.buyLocalCurrency)}`
+      : `Alış: ${formatUSD(holding.buyPriceUSD)}`;
 
   return (
     <TouchableOpacity
@@ -137,7 +146,10 @@ function HoldingRow({ holding, onDelete }) {
       <View style={styles.holdingInfo}>
         <View style={styles.holdingTopRow}>
           <Text style={styles.holdingName}>{holding.assetName}</Text>
-          <Text style={styles.holdingCurrentVal}>{formatUSD(holding.currentUSD)}</Text>
+          <View style={styles.holdingValueBlock}>
+            <Text style={styles.holdingCurrentVal}>{formatUSD(holding.currentUSD)}</Text>
+            <Text style={styles.holdingCurrentValLocal}>{formatCurrency(currentLocal, localCurrency)}</Text>
+          </View>
         </View>
         <View style={styles.holdingBottomRow}>
           <Text style={styles.holdingAmount}>
@@ -155,7 +167,7 @@ function HoldingRow({ holding, onDelete }) {
           </View>
         </View>
         <Text style={styles.holdingMeta}>
-          Alış: {formatUSD(holding.buyPriceUSD)} · Maliyet: {formatUSD(holding.costUSD)} · Tarih: {formatDate(holding.buyDate) || '-'}
+          {buyLabel} · Maliyet: {formatUSD(holding.costUSD)} ({formatCurrency(costLocal, localCurrency)}) · Tarih: {formatDate(holding.buyDate) || '-'}
         </Text>
       </View>
     </TouchableOpacity>
@@ -303,6 +315,7 @@ export default function PortfolioScreen({ navigation }) {
           <StatCard
             label={t('cost')}
             value={formatUSD(totalCostUSD)}
+            sub={formatCurrency(convertUSDToCurrency(totalCostUSD, localCurrency, prices), localCurrency)}
             icon="receipt-outline"
             iconColor={Colors.primary}
             iconBg={Colors.accentLight}
@@ -392,6 +405,14 @@ export default function PortfolioScreen({ navigation }) {
           <>
             {grouped.map((g) => {
               const groupUp = g.plUSD >= 0;
+                const usdRowsForLocal = g.assetId === 'usd'
+                  ? enrichedHoldings.filter((h) => h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null)
+                  : [];
+                const groupCostLocalValue = usdRowsForLocal.length > 0
+                  ? usdRowsForLocal.reduce((sum, row) => sum + (row.buyLocalTotal || 0), 0)
+                  : convertUSDToCurrency(g.totalCostUSD, localCurrency, prices);
+                const groupCurrentLocalValue = convertUSDToCurrency(g.totalCurrentUSD, localCurrency, prices);
+
               return (
                 <View key={g.assetId} style={styles.groupCard}>
                   <View style={styles.groupHeader}>
@@ -406,8 +427,11 @@ export default function PortfolioScreen({ navigation }) {
                       <Text style={styles.groupCost}>
                         {t('cost')}: {formatUSD(g.totalCostUSD)}
                       </Text>
+                      <Text style={styles.groupCostLocal}>
+                        {formatCurrency(groupCostLocalValue, localCurrency)}
+                      </Text>
                       {g.assetId === 'usd' && currentLocalPerUsd != null ? (() => {
-                        const usdRows = enrichedHoldings.filter((h) => h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null);
+                        const usdRows = usdRowsForLocal;
                         if (usdRows.length === 0) return null;
 
                         const groupAmountForLocal = usdRows.reduce((sum, row) => sum + (row.amount || 0), 0);
@@ -426,6 +450,7 @@ export default function PortfolioScreen({ navigation }) {
                     </View>
                     <View style={styles.groupRight}>
                       <Text style={styles.groupValue}>{formatUSD(g.totalCurrentUSD)}</Text>
+                      <Text style={styles.groupValueLocal}>{formatCurrency(groupCurrentLocalValue, localCurrency)}</Text>
                       <View style={[styles.groupPL, { backgroundColor: groupUp ? Colors.successLight : Colors.dangerLight }]}>
                         <Text style={[styles.groupPLText, { color: groupUp ? Colors.success : Colors.danger }]}>
                           {groupUp ? '+' : ''}{formatUSD(g.plUSD)} ({formatPercent(g.plPercent)})
@@ -437,14 +462,18 @@ export default function PortfolioScreen({ navigation }) {
                     <View key={h.id} style={styles.subRow}>
                       <Text style={styles.subDate}>{formatDate(h.buyDate) || '-'}</Text>
                       <Text style={styles.subAmount}>{formatCrypto(h.amount)} {t('quantity_unit')}</Text>
-                      <Text style={styles.subBuyPrice}>{t('buy_price')}: {formatUSD(h.buyPriceUSD)}</Text>
+                      <Text style={styles.subBuyPrice}>
+                        {h.assetId === 'usd' && h.buyLocalCurrency && h.buyFxLocalPerUSD != null
+                          ? `Kur: ${formatCurrency(h.buyFxLocalPerUSD, h.buyLocalCurrency)}`
+                          : `${t('buy_price')}: ${formatUSD(h.buyPriceUSD)}`}
+                      </Text>
                       {h.assetId === 'usd' && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null && currentLocalPerUsd != null ? (() => {
                         const localCurrent = (h.amount || 0) * currentLocalPerUsd;
                         const localPl = localCurrent - h.buyLocalTotal;
                         const localUp = localPl >= 0;
                         return (
                           <Text style={[styles.subLocalPl, { color: localUp ? Colors.success : Colors.danger }]}> 
-                            Kur: {localPl >= 0 ? '+' : ''}{formatCurrency(localPl, localCurrency)}
+                            P/L: {localPl >= 0 ? '+' : ''}{formatCurrency(localPl, localCurrency)}
                           </Text>
                         );
                       })() : null}
@@ -473,7 +502,13 @@ export default function PortfolioScreen({ navigation }) {
               .slice()
               .sort((a, b) => new Date(b.buyDate) - new Date(a.buyDate))
               .map((h) => (
-                <HoldingRow key={h.id} holding={h} onDelete={deleteHolding} />
+                <HoldingRow
+                  key={h.id}
+                  holding={h}
+                  onDelete={deleteHolding}
+                  localCurrency={localCurrency}
+                  prices={prices}
+                />
               ))}
           </>
         )}
@@ -744,9 +779,11 @@ const styles = StyleSheet.create({
   groupName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   groupAmount: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
   groupCost: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  groupCostLocal: { fontSize: 11, color: Colors.textLight, marginTop: 1 },
   groupLocalPl: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   groupRight: { alignItems: 'flex-end', gap: 4 },
   groupValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  groupValueLocal: { fontSize: 11, color: Colors.textLight, marginTop: -2 },
   groupPL: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   groupPLText: { fontSize: 11, fontWeight: '700' },
   subRow: {
@@ -762,7 +799,7 @@ const styles = StyleSheet.create({
   },
   subDate: { fontSize: 11, color: Colors.textLight, width: 70 },
   subAmount: { fontSize: 11, color: Colors.textSecondary, flex: 1 },
-  subBuyPrice: { fontSize: 11, color: Colors.textSecondary },
+  subBuyPrice: { fontSize: 11, color: Colors.textSecondary, flexShrink: 1 },
   subLocalPl: { fontSize: 11, fontWeight: '600' },
   subCurrent: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
 
@@ -785,7 +822,9 @@ const styles = StyleSheet.create({
   holdingInfo: { flex: 1 },
   holdingTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
   holdingName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  holdingValueBlock: { alignItems: 'flex-end' },
   holdingCurrentVal: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  holdingCurrentValLocal: { fontSize: 11, color: Colors.textLight, marginTop: 1 },
   holdingBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
   holdingAmount: { fontSize: 12, color: Colors.textSecondary },
   holdingPL: { flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },

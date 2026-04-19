@@ -91,10 +91,13 @@ export default function SettingsScreen() {
           text: t('clear'),
           style: 'destructive',
           onPress: async () => {
-            for (const h of holdings) {
-              await deleteHolding(h.id);
+            try {
+              const ids = holdings.map((h) => h.id);
+              await Promise.all(ids.map((id) => deleteHolding(id)));
+              Alert.alert(t('success'), t('all_investments_deleted'));
+            } catch (err) {
+              Alert.alert(t('error'), 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
             }
-            Alert.alert(t('success'), t('all_investments_deleted'));
           },
         },
       ]
@@ -244,26 +247,6 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        <SectionHeader title={t('data_sources')} />
-        <View style={styles.card}>
-          {[
-            { label: t('forex_rates'), sub: 'Frankfurter (api.frankfurter.app)', icon: 'swap-horizontal-outline', color: Colors.primary },
-            { label: `${t('metals')}`, sub: t('derived_spot_rates'), icon: 'diamond-outline', color: Colors.warning },
-            { label: 'CoinGecko', sub: 'coingecko.com', icon: 'logo-bitcoin', color: '#F7931A' },
-          ].map((item, index) => (
-            <React.Fragment key={item.label}>
-              {index > 0 && <View style={styles.divider} />}
-              <SettingRow
-                icon={item.icon}
-                iconColor={item.color}
-                iconBg={item.color + '20'}
-                label={item.label}
-                sub={item.sub}
-              />
-            </React.Fragment>
-          ))}
         </View>
 
         <SectionHeader title={t('portfolio_section')} />

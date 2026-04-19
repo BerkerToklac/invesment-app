@@ -46,7 +46,7 @@ function SectionHeader({ title }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, deleteHolding, deleteUsdHoldings } = usePortfolio();
+  const { holdings, clearPortfolio, deleteUsdHoldings } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
   const { localCurrency, setLocalCurrency, language, setLanguage, t } = useSettings();
 
@@ -92,8 +92,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const ids = holdings.map((h) => h.id);
-              await Promise.all(ids.map((id) => deleteHolding(id)));
+              await clearPortfolio();
               Alert.alert(t('success'), t('all_investments_deleted'));
             } catch (err) {
               Alert.alert(t('error'), 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');

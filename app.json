@@ -13,19 +13,27 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.portfoy.app"
+      "bundleIdentifier": "com.labs48.investment",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1A1F71"
       },
-      "package": "com.portfoy.app"
+      "package": "com.labs48.investment"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [],
-    "newArchEnabled": false
+    "newArchEnabled": false,
+    "extra": {
+      "eas": {
+        "projectId": "b20c6de8-3438-47ac-b331-2d3a32e527a4"
+      }
+    }
   }
 }

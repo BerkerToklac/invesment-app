@@ -22,8 +22,8 @@ import { useSettings } from '../context/SettingsContext';
 
 export default function OnboardingScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { email } = route.params;
-  const { updateProfile } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const email = route?.params?.email || user?.email || '';
   const { t } = useSettings();
 
   const [name, setName]   = useState('');
@@ -74,7 +74,6 @@ export default function OnboardingScreen({ route, navigation }) {
     setLoading(true);
     try {
       await updateProfile(name.trim());
-      navigation.replace('App');
     } catch (e) {
       Alert.alert(t('error'), t('onboarding_save_error'));
       setLoading(false);

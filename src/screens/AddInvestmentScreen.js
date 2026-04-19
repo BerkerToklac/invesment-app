@@ -85,18 +85,20 @@ function DatePickerField({ value, onChange }) {
                 <Text style={styles.dateSheetConfirm}>{t('ok')}</Text>
               </TouchableOpacity>
             </View>
-            <DateTimePicker
-              value={tempDate}
-              mode="date"
-              display="spinner"
-              onChange={handleChange}
-              maximumDate={new Date()}
-              minimumDate={new Date(2000, 0, 1)}
-              locale={pickerLocale}
-              themeVariant="light"
-              textColor={Colors.textPrimary}
-              style={{ width: '100%' }}
-            />
+            <View style={styles.datePickerWrap}>
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="spinner"
+                onChange={handleChange}
+                maximumDate={new Date()}
+                minimumDate={new Date(2000, 0, 1)}
+                locale={pickerLocale}
+                themeVariant="light"
+                textColor={Colors.textPrimary}
+                style={styles.datePickerIOS}
+              />
+            </View>
           </View>
         </Modal>
       )}
@@ -793,5 +795,15 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '700',
     textAlign: 'right',
+  },
+  datePickerWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    overflow: 'hidden',
+  },
+  datePickerIOS: {
+    width: 320,
+    maxWidth: '100%',
   },
 });

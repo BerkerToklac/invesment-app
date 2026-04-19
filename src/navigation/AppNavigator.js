@@ -74,6 +74,14 @@ function AuthStack() {
   );
 }
 
+function OnboardingStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function AppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -102,5 +110,9 @@ export default function AppNavigator() {
     );
   }
 
-  return <NavigationContainer>{user ? <AppStack /> : <AuthStack />}</NavigationContainer>;
+  return (
+    <NavigationContainer>
+      {!user ? <AuthStack /> : user.profileCompleted ? <AppStack /> : <OnboardingStack />}
+    </NavigationContainer>
+  );
 }

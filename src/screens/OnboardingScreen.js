@@ -17,17 +17,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import AuthLanguageSelector from '../components/AuthLanguageSelector';
+import { useSettings } from '../context/SettingsContext';
 
 export default function OnboardingScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { email } = route.params;
   const { updateProfile } = useAuth();
+  const { t } = useSettings();
 
   const [name, setName]   = useState('');
-  const [age, setAge]     = useState('');
   const [loading, setLoading] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
-  const [ageFocused, setAgeFocused]   = useState(false);
 
   // Giriş animasyonları
   const fadeIn   = useRef(new Animated.Value(0)).current;
@@ -63,26 +64,19 @@ export default function OnboardingScreen({ route, navigation }) {
   }, [name]);
 
   const firstLetter = name.trim() ? name.trim()[0].toUpperCase() : null;
-  const displayName = name.trim() || 'Kullanıcı';
-  const parsedAge   = parseInt(age, 10);
-  const ageValid    = age === '' || (parsedAge >= 10 && parsedAge <= 120);
-  const canContinue = name.trim().length >= 2 && (age === '' || ageValid);
+  const canContinue = name.trim().length >= 2;
 
   const handleSave = async () => {
     if (name.trim().length < 2) {
-      Alert.alert('Eksik Bilgi', 'Lütfen en az 2 karakterlik bir isim girin.');
-      return;
-    }
-    if (age && !ageValid) {
-      Alert.alert('Geçersiz Yaş', 'Lütfen 10 ile 120 arasında bir yaş girin.');
+      Alert.alert(t('onboarding_missing_info_title'), t('onboarding_missing_info_body'));
       return;
     }
     setLoading(true);
     try {
-      await updateProfile(name.trim(), age ? parsedAge : null);
+      await updateProfile(name.trim());
       navigation.replace('App');
     } catch (e) {
-      Alert.alert('Hata', 'Profil kaydedilemedi.');
+      Alert.alert(t('error'), t('onboarding_save_error'));
       setLoading(false);
     }
   };
@@ -94,6 +88,10 @@ export default function OnboardingScreen({ route, navigation }) {
     >
       <View style={styles.circle1} />
       <View style={styles.circle2} />
+
+      <View style={[styles.langWrap, { top: insets.top + 10 }]}> 
+        <AuthLanguageSelector />
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -112,11 +110,11 @@ export default function OnboardingScreen({ route, navigation }) {
             style={[styles.header, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
           >
             <View style={styles.stepBadge}>
-              <Text style={styles.stepText}>Son adım 🎉</Text>
+              <Text style={styles.stepText}>{t('onboarding_step_badge')} 🎉</Text>
             </View>
-            <Text style={styles.title}>Seni tanıyalım</Text>
+            <Text style={styles.title}>{t('onboarding_title')}</Text>
             <Text style={styles.subtitle}>
-              Portföyünü kişiselleştirmek için{'\n'}birkaç bilgiye ihtiyacımız var.
+              {t('onboarding_subtitle_line1')}{'\n'}{t('onboarding_subtitle_line2')}
             </Text>
           </Animated.View>
 
@@ -141,10 +139,9 @@ export default function OnboardingScreen({ route, navigation }) {
 
             <View style={styles.previewInfo}>
               <Text style={styles.previewName} numberOfLines={1}>
-                {name.trim() || 'İsminiz'}
+                {name.trim() || t('onboarding_name_placeholder')}
               </Text>
               <Text style={styles.previewDetail}>
-                {age ? `${age} yaşında · ` : ''}
                 {email}
               </Text>
             </View>
@@ -158,14 +155,14 @@ export default function OnboardingScreen({ route, navigation }) {
             <View style={styles.fieldBlock}>
               <View style={styles.fieldLabelRow}>
                 <Ionicons name="person-outline" size={15} color="rgba(255,255,255,0.6)" />
-                <Text style={styles.fieldLabel}>Ad Soyad</Text>
+                <Text style={styles.fieldLabel}>{t('onboarding_name_placeholder')}</Text>
                 <Text style={styles.fieldRequired}>*</Text>
               </View>
               <View style={[styles.fieldInput, nameFocused && styles.fieldInputFocused]}>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Adınızı girin"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  placeholder={t('onboarding_name_input_placeholder')}
+                  placeholderTextColor="rgba(255,255,255,0.75)"
                   value={name}
                   onChangeText={setName}
                   onFocus={() => setNameFocused(true)}
@@ -173,48 +170,12 @@ export default function OnboardingScreen({ route, navigation }) {
                   autoCapitalize="words"
                   returnKeyType="next"
                   maxLength={50}
-                  selectionColor="rgba(255,255,255,0.7)"
+                  selectionColor="rgba(255,255,255,0.95)"
                 />
                 {name.trim().length >= 2 && (
                   <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
                 )}
               </View>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.fieldDivider} />
-
-            {/* Yaş */}
-            <View style={styles.fieldBlock}>
-              <View style={styles.fieldLabelRow}>
-                <Ionicons name="calendar-outline" size={15} color="rgba(255,255,255,0.6)" />
-                <Text style={styles.fieldLabel}>Yaş</Text>
-                <Text style={styles.fieldOptional}>(isteğe bağlı)</Text>
-              </View>
-              <View style={[styles.fieldInput, ageFocused && styles.fieldInputFocused]}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Yaşınızı girin"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={age}
-                  onChangeText={(v) => setAge(v.replace(/[^0-9]/g, '').slice(0, 3))}
-                  onFocus={() => setAgeFocused(true)}
-                  onBlur={() => setAgeFocused(false)}
-                  keyboardType="number-pad"
-                  returnKeyType="done"
-                  maxLength={3}
-                  selectionColor="rgba(255,255,255,0.7)"
-                />
-                {age && !ageValid && (
-                  <Ionicons name="warning" size={18} color={Colors.warning} />
-                )}
-                {age && ageValid && (
-                  <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-                )}
-              </View>
-              {age && !ageValid && (
-                <Text style={styles.fieldError}>Lütfen geçerli bir yaş girin (10–120)</Text>
-              )}
             </View>
           </Animated.View>
 
@@ -222,7 +183,7 @@ export default function OnboardingScreen({ route, navigation }) {
           <View style={styles.privacyRow}>
             <Ionicons name="lock-closed-outline" size={13} color="rgba(255,255,255,0.4)" />
             <Text style={styles.privacyText}>
-              Bilgileriniz yalnızca cihazınızda saklanır.
+              {t('onboarding_privacy_note')}
             </Text>
           </View>
 
@@ -239,7 +200,7 @@ export default function OnboardingScreen({ route, navigation }) {
               ) : (
                 <>
                   <Text style={[styles.btnText, !canContinue && styles.btnTextDisabled]}>
-                    Başlayalım
+                    {t('onboarding_start')}
                   </Text>
                   <Ionicons
                     name="rocket-outline"
@@ -284,6 +245,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 22,
   },
+  langWrap: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 20,
+  },
 
   // Başlık
   header: { alignItems: 'center', gap: 10 },
@@ -305,7 +271,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -359,7 +325,7 @@ const styles = StyleSheet.create({
   },
   previewDetail: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(255,255,255,0.86)',
     lineHeight: 17,
   },
 
@@ -382,10 +348,10 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.92)',
   },
   fieldRequired: { fontSize: 14, color: Colors.danger, fontWeight: '700' },
-  fieldOptional: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginLeft: 2 },
+  fieldOptional: { fontSize: 12, color: 'rgba(255,255,255,0.72)', marginLeft: 2 },
   fieldInput: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -406,16 +372,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
   },
-  fieldError: {
-    fontSize: 12,
-    color: Colors.warning,
-    marginLeft: 2,
-  },
-  fieldDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginVertical: 12,
-  },
 
   // Gizlilik
   privacyRow: {
@@ -425,7 +381,7 @@ const styles = StyleSheet.create({
   },
   privacyText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255,255,255,0.76)',
   },
 
   // Buton

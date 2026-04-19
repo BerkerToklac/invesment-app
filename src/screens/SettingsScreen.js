@@ -95,7 +95,7 @@ export default function SettingsScreen() {
               await clearPortfolio();
               Alert.alert(t('success'), t('all_investments_deleted'));
             } catch (err) {
-              Alert.alert(t('error'), 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
+              Alert.alert(t('error'), t('operation_failed_retry'));
             }
           },
         },
@@ -113,20 +113,20 @@ export default function SettingsScreen() {
     }
 
     Alert.alert(
-      'Local Para Birimi Değişikliği',
-      'Local para birimini değiştirirsen mevcut USD pozisyonların silinecek. Bu işlem geri alınamaz. Devam edilsin mi?',
+      t('local_currency_change_title'),
+      t('local_currency_change_body'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Evet, Sil ve Değiştir',
+          text: t('local_currency_change_confirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteUsdHoldings();
               await setLocalCurrency(nextCurrency);
-              Alert.alert(t('success'), 'USD pozisyonları silindi ve local para birimi güncellendi.');
+              Alert.alert(t('success'), t('local_currency_changed_with_usd_deleted'));
             } catch (err) {
-              Alert.alert(t('error'), 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
+              Alert.alert(t('error'), t('operation_failed_retry'));
             }
           },
         },
@@ -141,7 +141,7 @@ export default function SettingsScreen() {
   const userInitial = user?.name
     ? user.name.trim()[0].toUpperCase()
     : user?.email?.[0]?.toUpperCase() || 'U';
-  const displayName = user?.name || (language === 'en' ? 'User' : 'Kullanıcı');
+  const displayName = user?.name || t('user_fallback');
 
   return (
     <View style={styles.root}>

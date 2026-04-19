@@ -11,35 +11,39 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import AuthLanguageSelector from '../components/AuthLanguageSelector';
+import LegalLinksModal from '../components/LegalLinksModal';
+import { useSettings } from '../context/SettingsContext';
 
 const { width, height } = Dimensions.get('window');
 
-const FEATURES = [
+const FEATURE_ITEMS = [
   {
     icon: 'trending-up-outline',
     color: Colors.success,
     bg: Colors.successLight,
-    title: 'Anlık Kur Takibi',
-    desc: 'USD, EUR, Altın, Gümüş ve kripto paralar canlı olarak takip edilir.',
+    titleKey: 'welcome_feature_live_title',
+    descKey: 'welcome_feature_live_desc',
   },
   {
     icon: 'pie-chart-outline',
     color: Colors.primaryLight,
     bg: Colors.accentLight,
-    title: 'Portföy Analizi',
-    desc: 'Yatırımlarının dağılımını, maliyetini ve kar/zararını görselleştir.',
+    titleKey: 'welcome_feature_portfolio_title',
+    descKey: 'welcome_feature_portfolio_desc',
   },
   {
     icon: 'shield-checkmark-outline',
     color: Colors.warning,
     bg: Colors.warningLight,
-    title: 'Güvenli & Yerel',
-    desc: 'Tüm veriler yalnızca cihazında saklanır, hiçbir yere gönderilmez.',
+    titleKey: 'welcome_feature_secure_title',
+    descKey: 'welcome_feature_secure_desc',
   },
 ];
 
 export default function WelcomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { t } = useSettings();
 
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const headerY = useRef(new Animated.Value(30)).current;
@@ -77,6 +81,10 @@ export default function WelcomeScreen({ navigation }) {
       <View style={styles.bgCircle1} />
       <View style={styles.bgCircle2} />
 
+      <View style={[styles.langFloating, { top: insets.top + 10 }]}> 
+        <AuthLanguageSelector />
+      </View>
+
       <View style={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
 
         {/* Logo + Başlık */}
@@ -89,12 +97,12 @@ export default function WelcomeScreen({ navigation }) {
           <View style={styles.logoCircle}>
             <Ionicons name="trending-up" size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.appName}>Portföy</Text>
+          <Text style={styles.appName}>{t('portfolio_tab')}</Text>
           <Text style={styles.headline}>
-            Tüm yatırımların{'\n'}tek bir yerde
+            {t('welcome_headline_line1')}{'\n'}{t('welcome_headline_line2')}
           </Text>
           <Text style={styles.subHeadline}>
-            Döviz, altın ve kripto portföyünü{'\n'}gerçek zamanlı verilerle takip et.
+            {t('welcome_subheadline_line1')}{'\n'}{t('welcome_subheadline_line2')}
           </Text>
         </Animated.View>
 
@@ -105,14 +113,14 @@ export default function WelcomeScreen({ navigation }) {
             { opacity: cardsOpacity, transform: [{ translateY: cardsY }] },
           ]}
         >
-          {FEATURES.map((f) => (
-            <View key={f.title} style={styles.featureCard}>
+          {FEATURE_ITEMS.map((f) => (
+            <View key={f.titleKey} style={styles.featureCard}>
               <View style={[styles.featureIcon, { backgroundColor: f.bg }]}>
                 <Ionicons name={f.icon} size={22} color={f.color} />
               </View>
               <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
+                <Text style={styles.featureTitle}>{t(f.titleKey)}</Text>
+                <Text style={styles.featureDesc}>{t(f.descKey)}</Text>
               </View>
             </View>
           ))}
@@ -130,13 +138,11 @@ export default function WelcomeScreen({ navigation }) {
             onPress={() => navigation.navigate('Login')}
             activeOpacity={0.88}
           >
-            <Text style={styles.loginBtnText}>Giriş Yap</Text>
+            <Text style={styles.loginBtnText}>{t('welcome_cta_login')}</Text>
             <Ionicons name="arrow-forward" size={20} color={Colors.primary} />
           </TouchableOpacity>
 
-          <Text style={styles.disclaimer}>
-            Devam ederek Kullanım Şartlarını kabul etmiş olursunuz.
-          </Text>
+          <LegalLinksModal />
         </Animated.View>
 
       </View>
@@ -171,6 +177,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: 'space-between',
   },
+  langFloating: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 20,
+  },
 
   // Header
   headerSection: { alignItems: 'center', gap: 10 },
@@ -191,7 +202,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.9)',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
@@ -206,7 +217,7 @@ const styles = StyleSheet.create({
   },
   subHeadline: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 4,
@@ -240,7 +251,7 @@ const styles = StyleSheet.create({
   },
   featureDesc: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255,255,255,0.88)',
     lineHeight: 17,
   },
 
@@ -266,10 +277,5 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     letterSpacing: 0.2,
   },
-  disclaimer: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  disclaimer: {},
 });

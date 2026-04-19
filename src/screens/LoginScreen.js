@@ -16,8 +16,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import AuthLanguageSelector from '../components/AuthLanguageSelector';
+import LegalLinksModal from '../components/LegalLinksModal';
 
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +29,7 @@ const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { sendLoginCode } = useAuth();
+  const { t } = useSettings();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -80,7 +84,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleContinue = async () => {
     if (!isReady) {
-      Alert.alert('Geçersiz Email', 'Lütfen geçerli bir email adresi girin.');
+      Alert.alert(t('login_invalid_email_title'), t('login_invalid_email_body'));
       return;
     }
     setLoading(true);
@@ -88,7 +92,7 @@ export default function LoginScreen({ navigation }) {
       await sendLoginCode(email.trim().toLowerCase());
       navigation.navigate('OTP', { email: email.trim().toLowerCase() });
     } catch {
-      Alert.alert('Hata', 'Kod gönderilemedi. Lütfen tekrar deneyin.');
+      Alert.alert(t('error'), t('login_code_send_error'));
     } finally {
       setLoading(false);
     }
@@ -108,6 +112,7 @@ export default function LoginScreen({ navigation }) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
+        <AuthLanguageSelector />
       </View>
 
       <KeyboardAvoidingView
@@ -127,9 +132,9 @@ export default function LoginScreen({ navigation }) {
 
           {/* Başlık */}
           <Animated.View style={{ opacity: titleOpacity, transform: [{ translateY: titleY }], alignItems: 'center' }}>
-            <Text style={styles.title}>Email adresiniz</Text>
+            <Text style={styles.title}>{t('login_email_title')}</Text>
             <Text style={styles.subtitle}>
-              Size bir doğrulama kodu göndereceğiz.{'\n'}Şifre hatırlamak yok.
+              {t('login_email_subtitle_line1')}{"\n"}{t('login_email_subtitle_line2')}
             </Text>
           </Animated.View>
 
@@ -139,13 +144,13 @@ export default function LoginScreen({ navigation }) {
               <Ionicons
                 name="mail-outline"
                 size={19}
-                color={focused ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.45)'}
+                color={focused ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.75)'}
                 style={styles.inputIcon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="ornek@email.com"
-                placeholderTextColor="rgba(255,255,255,0.58)"
+                placeholderTextColor="rgba(255,255,255,0.82)"
                 value={email}
                 onChangeText={setEmail}
                 onFocus={handleFocus}
@@ -169,8 +174,8 @@ export default function LoginScreen({ navigation }) {
             {/* Alt hint */}
             <Text style={styles.inputHint}>
               {focused
-                ? 'Kodu email kutunuzda arayın.'
-                : 'Gerçek bir email adresi kullanın.'}
+                ? t('login_hint_focused')
+                : t('login_hint_unfocused')}
             </Text>
           </Animated.View>
 
@@ -187,7 +192,7 @@ export default function LoginScreen({ navigation }) {
               ) : (
                 <>
                   <Text style={[styles.btnText, !isReady && styles.btnTextDisabled]}>
-                    Devam Et
+                    {t('login_continue')}
                   </Text>
                   <Ionicons
                     name="arrow-forward"
@@ -203,9 +208,11 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.securityRow}>
             <Ionicons name="shield-checkmark-outline" size={14} color="rgba(255,255,255,0.45)" />
             <Text style={styles.securityText}>
-              Verileriniz yalnızca cihazınızda saklanır
+              {t('login_security_note')}
             </Text>
           </View>
+
+          <LegalLinksModal />
 
         </View>
       </KeyboardAvoidingView>
@@ -236,6 +243,9 @@ const styles = StyleSheet.create({
   },
 
   topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
@@ -295,7 +305,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.84)',
+    color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: '500',
@@ -329,7 +339,7 @@ const styles = StyleSheet.create({
   },
   inputHint: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 8,
     marginLeft: 4,
     fontWeight: '500',
@@ -372,7 +382,7 @@ const styles = StyleSheet.create({
   },
   securityText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
   },
 });

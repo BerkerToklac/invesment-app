@@ -8,12 +8,17 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import AuthLanguageSelector from '../components/AuthLanguageSelector';
+import { useSettings } from '../context/SettingsContext';
 
 const { width } = Dimensions.get('window');
 const SPLASH_DURATION = 3000;
 
 export default function SplashScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const { t } = useSettings();
   const logoScale = useRef(new Animated.Value(0.4)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
@@ -82,6 +87,10 @@ export default function SplashScreen({ navigation }) {
       <View style={styles.circleLarge} />
       <View style={styles.circleSmall} />
 
+      <View style={[styles.langWrap, { top: insets.top + 10 }]}> 
+        <AuthLanguageSelector />
+      </View>
+
       {/* Logo */}
       <Animated.View
         style={[
@@ -96,12 +105,12 @@ export default function SplashScreen({ navigation }) {
 
       {/* Uygulama Adı */}
       <Animated.Text style={[styles.appName, { opacity: textOpacity }]}>
-        Portföy
+        {t('portfolio_tab')}
       </Animated.Text>
 
       {/* Tagline */}
       <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
-        Yatırımlarını Akıllıca Takip Et
+        {t('splash_tagline')}
       </Animated.Text>
 
       {/* Alt kısım: progress bar */}
@@ -158,6 +167,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
+  langWrap: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 20,
+  },
 
   circleLarge: {
     position: 'absolute',
@@ -202,7 +216,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.92)',
     fontWeight: '400',
     letterSpacing: 0.3,
   },

@@ -38,8 +38,10 @@ function sanitizeTwoDecimalInput(value) {
 }
 
 function DatePickerField({ value, onChange }) {
+  const { t, language } = useSettings();
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState(value);
+  const pickerLocale = language === 'en' ? 'en-US' : 'tr-TR';
 
   const formatted = formatDateLong(value);
 
@@ -76,11 +78,11 @@ function DatePickerField({ value, onChange }) {
             <View style={styles.dateSheetHandle} />
             <View style={styles.dateSheetHeader}>
               <TouchableOpacity onPress={() => setShowPicker(false)} style={styles.dateSheetBtn}>
-                <Text style={styles.dateSheetCancel}>İptal</Text>
+                <Text style={styles.dateSheetCancel}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.dateSheetTitle}>Tarih Seç</Text>
+              <Text style={styles.dateSheetTitle}>{t('date_picker_title')}</Text>
               <TouchableOpacity onPress={handleConfirm} style={styles.dateSheetBtn}>
-                <Text style={styles.dateSheetConfirm}>Tamam</Text>
+                <Text style={styles.dateSheetConfirm}>{t('ok')}</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -90,7 +92,9 @@ function DatePickerField({ value, onChange }) {
               onChange={handleChange}
               maximumDate={new Date()}
               minimumDate={new Date(2000, 0, 1)}
-              locale="tr-TR"
+              locale={pickerLocale}
+              themeVariant="light"
+              textColor={Colors.textPrimary}
               style={{ width: '100%' }}
             />
           </View>
@@ -243,7 +247,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
   const autofillPrice = () => {
     if (isUsdAsset) {
-      Alert.alert(t('info') || 'Bilgi', 'USD varlığında alış kuru manuel girilir.');
+      Alert.alert(t('info'), t('usd_manual_rate_info'));
       return;
     }
 
@@ -281,7 +285,7 @@ export default function AddInvestmentScreen({ navigation }) {
         buyFxLocalPerUSD = localCurrency === 'USD' ? 1 : buyPriceNumber;
 
         if (buyFxLocalPerUSD == null) {
-          Alert.alert(t('error'), 'Alış kuru girilmedi, USD işlemi kaydedilemedi.');
+          Alert.alert(t('error'), t('usd_save_rate_missing'));
           setLoading(false);
           return;
         }
@@ -305,7 +309,7 @@ export default function AddInvestmentScreen({ navigation }) {
       });
 
       Alert.alert(t('success'), `${selectedAsset.name} ${t('added_to_portfolio')}`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        { text: t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       Alert.alert(t('error'), t('add_investment_error'));
@@ -376,7 +380,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 </View>
               </FormRow>
 
-              <FormRow label={isUsdAsset ? `Alış Kuru (${localCurrency}/USD) *` : `${t('purchase_price')} (${priceCurrency}) *`}>
+              <FormRow label={isUsdAsset ? `${t('buy_rate_label')} (${localCurrency}/USD) *` : `${t('purchase_price')} (${priceCurrency}) *`}>
                 {!isUsdAsset && (
                   <View style={styles.currencyTabs}>
                     {priceCurrencyOptions.map((currency) => (
@@ -415,9 +419,9 @@ export default function AddInvestmentScreen({ navigation }) {
                   <View style={styles.marketPriceInfo}>
                     <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
                     <Text style={styles.marketPriceText}>
-                      Referans güncel kur: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, 2)}</Text>
+                      {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, 2)}</Text>
                     </Text>
-                    <Text style={styles.marketPriceSub}>Geçmiş işlemin için alış kurunu elle girebilirsin.</Text>
+                    <Text style={styles.marketPriceSub}>{t('usd_manual_rate_info')}</Text>
                     <TouchableOpacity
                       style={styles.autofillBtn}
                       onPress={() => setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)))}
@@ -443,7 +447,7 @@ export default function AddInvestmentScreen({ navigation }) {
                 </View>
                 {isUsdAsset ? (
                   <Text style={styles.marketPriceSub}>
-                    USD birim fiyatı sabit 1 USD. Bu alanda 1 USD'nin {localCurrency} karşılığını giriyorsun.
+                    {t('buy_rate_label')}: 1 USD = {localCurrency}
                   </Text>
                 ) : null}
               </FormRow>
@@ -461,7 +465,7 @@ export default function AddInvestmentScreen({ navigation }) {
                     <Text style={styles.totalPreviewSub}>
                       {t('current_value')} ({localCurrency}): {formatCurrency(currentValueLocal, localCurrency, currentValueLocal < 1 ? 4 : 2)}
                     </Text>
-                    <Text style={styles.totalPreviewSub}>Güncel değer (USD): {formatUSD(currentValueUSD)}</Text>
+                    <Text style={styles.totalPreviewSub}>{t('current_value')} (USD): {formatUSD(currentValueUSD)}</Text>
                   </>
                 ) : null}
               </View>

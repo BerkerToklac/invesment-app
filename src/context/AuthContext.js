@@ -42,8 +42,8 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const updateProfile = async (name, age) => {
-    const data = await apiClient.put('/investment/profile', { name, age });
+  const updateProfile = async (name) => {
+    const data = await apiClient.put('/investment/profile', { name });
     const merged = {
       ...(user || {}),
       ...data.user,

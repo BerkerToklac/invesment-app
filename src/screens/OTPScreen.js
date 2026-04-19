@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import AuthLanguageSelector from '../components/AuthLanguageSelector';
+import { useSettings } from '../context/SettingsContext';
 
 const OTP_LENGTH = 6;
 
@@ -22,6 +24,7 @@ export default function OTPScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { email } = route.params;
   const { verifyLoginCode, sendLoginCode } = useAuth();
+  const { t } = useSettings();
 
   const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -67,11 +70,11 @@ export default function OTPScreen({ route, navigation }) {
   const handleVerify = async (code) => {
     const otpCode = code || otp.join('');
     if (otpCode.length !== OTP_LENGTH) {
-      Alert.alert('Eksik Kod', '6 haneli kodu tam girin.');
+      Alert.alert(t('otp_missing_code_title'), t('otp_missing_code_body'));
       return;
     }
     if (!/^\d{6}$/.test(otpCode)) {
-      Alert.alert('Geçersiz Kod', 'Lütfen sadece rakam girin.');
+      Alert.alert(t('otp_invalid_code_title'), t('otp_invalid_code_body'));
       return;
     }
 
@@ -84,8 +87,8 @@ export default function OTPScreen({ route, navigation }) {
         navigation.replace('Onboarding', { email });
       }
     } catch (e) {
-      const msg = e.status === 400 ? 'Kod hatalı veya süresi dolmuş.' : 'Doğrulama başarısız. Lütfen tekrar deneyin.';
-      Alert.alert('Hata', msg);
+      const msg = e.status === 400 ? t('otp_code_expired_or_invalid') : t('otp_verify_failed');
+      Alert.alert(t('error'), msg);
       setLoading(false);
     }
   };
@@ -98,9 +101,9 @@ export default function OTPScreen({ route, navigation }) {
     inputs.current[0]?.focus();
     try {
       await sendLoginCode(email);
-      Alert.alert('Kod Gönderildi', `${email} adresine yeni kod gönderildi.`);
+      Alert.alert(t('otp_code_resent_title'), `${email} ${t('otp_code_resent_suffix')}`);
     } catch (e) {
-      Alert.alert('Hata', 'Kod gönderilemedi. Lütfen tekrar deneyin.');
+      Alert.alert(t('error'), t('login_code_send_error'));
     }
   };
 
@@ -112,20 +115,22 @@ export default function OTPScreen({ route, navigation }) {
         style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 20 }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <AuthLanguageSelector />
+        </View>
 
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconCircle}>
             <Ionicons name="mail" size={32} color={Colors.primary} />
           </View>
-          <Text style={styles.title}>Kodu Girin</Text>
+          <Text style={styles.title}>{t('otp_title')}</Text>
           <Text style={styles.subtitle}>
             <Text style={styles.emailText}>{maskedEmail}</Text>
-            {'\n'}adresine 6 haneli kod gönderdik.
+            {'\n'}{t('otp_sent_to')}
           </Text>
         </View>
 
@@ -159,7 +164,7 @@ export default function OTPScreen({ route, navigation }) {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.verifyBtnText}>Doğrula</Text>
+                <Text style={styles.verifyBtnText}>{t('otp_verify_cta')}</Text>
                 <Ionicons name="checkmark" size={20} color="#fff" />
               </>
             )}
@@ -172,7 +177,7 @@ export default function OTPScreen({ route, navigation }) {
           >
             <Ionicons name="refresh" size={15} color={canResend ? Colors.primary : Colors.textLight} />
             <Text style={[styles.resendText, !canResend && styles.resendTextDisabled]}>
-              {canResend ? 'Kodu Tekrar Gönder' : `Yeniden gönder (${countdown}s)`}
+              {canResend ? t('otp_resend_code') : `${t('otp_resend_in')} (${countdown}s)`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -184,6 +189,12 @@ export default function OTPScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { flex: 1, paddingHorizontal: 24 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
 
   backBtn: {
     width: 40,
@@ -192,7 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 0,
   },
 
   header: { alignItems: 'center', marginBottom: 32 },
@@ -218,7 +229,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.93)',
     textAlign: 'center',
     lineHeight: 22,
   },

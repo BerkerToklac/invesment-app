@@ -81,9 +81,7 @@ export default function OTPScreen({ route, navigation }) {
     setLoading(true);
     try {
       const user = await verifyLoginCode(email, otpCode);
-      if (user.profileCompleted) {
-        navigation.replace('App');
-      } else {
+      if (!user.profileCompleted) {
         navigation.replace('Onboarding', { email });
       }
     } catch (e) {

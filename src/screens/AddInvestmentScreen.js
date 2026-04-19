@@ -418,6 +418,12 @@ export default function AddInvestmentScreen({ navigation }) {
                       Referans güncel kur: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, 2)}</Text>
                     </Text>
                     <Text style={styles.marketPriceSub}>Geçmiş işlemin için alış kurunu elle girebilirsin.</Text>
+                    <TouchableOpacity
+                      style={styles.autofillBtn}
+                      onPress={() => setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)))}
+                    >
+                      <Text style={styles.autofillText}>{t('use')}</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 

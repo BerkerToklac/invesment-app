@@ -23,6 +23,19 @@ project1-be/apps/investment/
     └── userAccountService.js
 ```
 
+## DB Koleksiyon Kuralı (Investment)
+
+Bu uygulama ortak backend (`project1-be`) üzerinde çalıştığı için **Investment app'e ait tüm MongoDB koleksiyon adları `INVESTMENT_` ile başlamalıdır**.
+
+Örnek:
+
+- `INVESTMENT_HOLDINGS`
+- `INVESTMENT_MARKET_RATES`
+- `INVESTMENT_CRYPTO_QUOTES`
+- `INVESTMENT_USER_INFO`
+
+Bu kural, yalnızca Investment domain'i için geçerlidir.
+
 ## API Endpoint'leri
 
 | Method | Endpoint | Auth | Açıklama |

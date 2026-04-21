@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://project1-be-1.onrender.com';
 const TOKEN_KEY   = '@portfoy_token';
+let unauthorizedHandler = null;
 
 async function getToken() {
   return AsyncStorage.getItem(TOKEN_KEY);
@@ -15,12 +16,17 @@ export async function removeToken() {
   await AsyncStorage.removeItem(TOKEN_KEY);
 }
 
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === 'function' ? handler : null;
+}
+
 async function request(path, options = {}) {
   if (!BACKEND_URL) {
     throw new Error('Backend URL is not configured (EXPO_PUBLIC_BACKEND_URL).');
   }
 
   const token = await getToken();
+  const hasAuthToken = Boolean(token);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -43,6 +49,10 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
+    if (res.status === 401 && hasAuthToken && unauthorizedHandler) {
+      await unauthorizedHandler({ path, options, status: res.status });
+    }
+
     const err = new Error(data?.message || `HTTP ${res.status}`);
     err.status = res.status;
     throw err;

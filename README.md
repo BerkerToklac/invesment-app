@@ -1,95 +1,94 @@
 # Portföy — Yatırım Takip Uygulaması
 
-React Native (Expo) ile geliştirilmiş kişisel yatırım portföy takip uygulaması.
+`invesment-app`, Expo ile geliştirilen INVESTMENT istemcisidir. Uygulama login, piyasa verisi görüntüleme, portföy yönetimi ve ayarlar akışlarını taşır.
 
-## Backend
+Bu repo frontend tarafını içerir. Backend karşılığı [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md) içindeki `INVESTMENT` ve `SHAREDBACKEND` alanlarıdır.
 
-Bu uygulama, bir üst klasörde yer alan **`../project1-be`** projesini backend olarak kullanır.
+## Bu Uygulamanın Backend Alanları
 
-`project1-be`, birden fazla mobil uygulamaya (dating, pet, investment…) aynı anda hizmet veren **ortak bir Express.js backend platformudur**. Kimlik doğrulama, kullanıcı yönetimi ve loglama gibi altyapı katmanları tüm uygulamalar tarafından ortaklaşa kullanılır; uygulama özelindeki veriler ise kendi modülleri altında izole tutulur.
+Bu istemci backend tarafında şu alanlarla konuşur:
 
-Investment uygulamasına özel backend modülü: `project1-be/apps/investment/`
+- `INVESTMENT`
+- `SHAREDBACKEND`
 
-```
-project1-be/apps/investment/
-├── models/
-│   ├── CryptoQuote.js       ← CoinMarketCap anlık görüntüsü (5dk'da bir)
-│   ├── InvestmentHolding.js ← Kullanıcı portföy kalemleri
-│   └── MarketRate.js        ← OpenExchangeRates anlık görüntüsü (saatte bir)
-├── routes/
-│   └── investment.js        ← /investment/* endpoint'leri
-└── services/
-    ├── marketDataService.js ← Zamanlanmış veri çekici
-    └── userAccountService.js
-```
+`INVESTMENT`, piyasa verisi ve portföy verilerini taşır. `SHAREDBACKEND`, ortak auth, kullanıcı ve log katmanını sağlar.
 
-## DB Koleksiyon Kuralı (Investment)
+## API Endpoint'leri
 
-Bu uygulama ortak backend (`project1-be`) üzerinde çalıştığı için **Investment app'e ait tüm MongoDB koleksiyon adları `INVESTMENT_` ile başlamalıdır**.
+| Method | Endpoint | Auth | Açıklama |
+|---|---|---|---|
+| `POST` | `/users/getLoginCode` | Hayır | Giriş kodu e-posta ile gönderilir |
+| `POST` | `/users/verifyLoginCode` | Hayır | Kod doğrulanır, JWT döner |
+| `GET` | `/users/me` | Evet | Oturum bilgisi |
+| `DELETE` | `/users/me` | Evet | Hesap silme |
+| `GET` | `/investment/market` | Hayır | Döviz, metal ve kripto anlık fiyatlar |
+| `GET` | `/investment/portfolio` | Evet | Kullanıcının portföy kalemleri |
+| `POST` | `/investment/portfolio` | Evet | Yeni kalem ekle |
+| `PUT` | `/investment/portfolio/:id` | Evet | Kalem güncelle |
+| `DELETE` | `/investment/portfolio/:id` | Evet | Kalem sil |
 
-Örnek:
+## Frontend-Backend Entegrasyonu
+
+Backend istemcisi [src/services/apiClient.js](/Users/airm4/Desktop/dev/invesment-app/src/services/apiClient.js) içinde tanımlıdır.
+
+Davranış:
+
+- `EXPO_PUBLIC_BACKEND_URL` kullanılır
+- fallback olarak production backend URL'i bulunur
+- auth token AsyncStorage içinde tutulur
+
+Auth çağrılarında app değeri `investment` olarak gönderilir:
+
+- [src/context/AuthContext.js](/Users/airm4/Desktop/dev/invesment-app/src/context/AuthContext.js)
+
+İstemcinin konuştuğu ana backend namespace'leri:
+
+- `/users`
+- `/investment`
+
+## Backend Koleksiyonları
+
+### `SHAREDBACKEND`
+
+- `SHAREDBACKEND_USERS`
+- `SHAREDBACKEND_LOGS`
+
+### `INVESTMENT`
+
+Bu uygulamaya ait MongoDB koleksiyonları `INVESTMENT_` ile başlar. Örnekler:
 
 - `INVESTMENT_HOLDINGS`
 - `INVESTMENT_MARKET_RATES`
 - `INVESTMENT_CRYPTO_QUOTES`
 - `INVESTMENT_USER_INFO`
 
-Bu kural, yalnızca Investment domain'i için geçerlidir.
+Not:
 
-## API Endpoint'leri
-
-| Method | Endpoint | Auth | Açıklama |
-|--------|----------|------|----------|
-| `POST` | `/users/getLoginCode` | — | Giriş kodu e-posta ile gönderilir |
-| `POST` | `/users/verifyLoginCode` | — | Kod doğrulanır; JWT döner |
-| `GET`  | `/users/me` | JWT | Oturum bilgisi |
-| `DELETE` | `/users/me` | JWT | Hesap silme |
-| `GET`  | `/investment/market` | — | Döviz + metal + kripto anlık fiyatlar |
-| `GET`  | `/investment/portfolio` | JWT | Kullanıcının portföy kalemleri |
-| `POST` | `/investment/portfolio` | JWT | Yeni kalem ekle |
-| `PUT`  | `/investment/portfolio/:id` | JWT | Kalem güncelle |
-| `DELETE` | `/investment/portfolio/:id` | JWT | Kalem sil |
-
-Tüm korumalı endpoint'lerde `Authorization: Bearer <token>` header'ı gerekir.
+- market scheduler logları `SHAREDBACKEND_LOGS` içine yazılır ve log kaynağı `INVESTMENT` olarak işaretlenir.
 
 ## Piyasa Verileri
 
 | Kaynak | Kapsam | Güncelleme |
-|--------|--------|------------|
-| [OpenExchangeRates](https://openexchangerates.org) | Döviz kurları + XAU (altın) + XAG (gümüş) | Saatte bir |
-| [CoinMarketCap](https://coinmarketcap.com) | BTC, BNB, XRP | 5 dakikada bir |
+|---|---|---|
+| OpenExchangeRates | Döviz kurları + değerli metaller | Saatte bir |
+| CoinMarketCap | BTC, BNB, XRP | 5 dakikada bir |
 
-Veriler backend'de MongoDB'ye kaydedilir; ön yüz her yeni açılışta `/investment/market` üzerinden tek sorguda alır.
+Veriler backend'de saklanır; istemci bunları `/investment/market` üzerinden çeker.
 
 ## Proje Yapısı
 
-```
-src/
-├── context/
-│   ├── AuthContext.js      ← JWT auth (sendLoginCode / verifyLoginCode)
-│   ├── MarketContext.js    ← Piyasa fiyatları
-│   ├── PortfolioContext.js ← Portföy CRUD (backend)
-│   └── SettingsContext.js
-├── navigation/
-│   └── AppNavigator.js
-├── screens/
-│   ├── HomeScreen.js
-│   ├── PortfolioScreen.js
-│   ├── AddInvestmentScreen.js
-│   ├── LoginScreen.js
-│   ├── OTPScreen.js
-│   ├── OnboardingScreen.js
-│   └── SettingsScreen.js
-├── services/
-│   ├── apiClient.js  ← HTTP istemcisi (token yönetimi dahil)
-│   └── storage.js    ← AsyncStorage (auth user + ayarlar)
-├── theme/
-│   └── colors.js
-└── utils/
-    ├── assets.js
-    ├── currency.js
-    ├── formatters.js
-    └── i18n.js
+```text
+invesment-app/
+├── App.js
+├── src/
+│   ├── components/
+│   ├── context/
+│   ├── navigation/
+│   ├── screens/
+│   ├── services/
+│   ├── theme/
+│   └── utils/
+└── README.md
 ```
 
 ## Kurulum
@@ -99,18 +98,26 @@ cd invesment-app
 npm install
 ```
 
-`.env` dosyası (repo'da `.env` olarak bulunur):
+`.env` örneği:
 
-```
+```env
 EXPO_PUBLIC_BACKEND_URL=https://project1-be-1.onrender.com
 ```
 
+Uygulamayı başlatın:
+
 ```bash
-npx expo start
+npm start
 ```
 
-## Ortam Değişkenleri
+Alternatif komutlar:
 
-| Değişken | Açıklama |
-|----------|----------|
-| `EXPO_PUBLIC_BACKEND_URL` | Backend base URL |
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
+## İlgili Repo
+
+- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)

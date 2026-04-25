@@ -10,12 +10,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import appConfig from '../../app.json';
 
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
+
+const appVersion = appConfig?.expo?.version || 'Unknown';
 
 function SettingRow({ icon, iconColor, iconBg, label, sub, right, onPress, danger }) {
   return (
@@ -264,7 +267,7 @@ export default function SettingsScreen() {
         <SectionHeader title={t('app')} />
         <View style={styles.card}>
           {[
-            { icon: 'information-circle-outline', label: t('version'), sub: '1.0.0', color: Colors.primary },
+            { icon: 'information-circle-outline', label: t('version'), sub: appVersion, color: Colors.primary },
             { icon: 'alert-circle-outline', label: t('disclaimer_title'), sub: t('disclaimer_short'), color: Colors.warning },
           ].map((item, index) => (
             <React.Fragment key={item.label}>

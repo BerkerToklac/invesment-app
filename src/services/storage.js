@@ -38,7 +38,7 @@ export const StorageService = {
   // Settings
   async getSettings() {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
-    const defaults = { displayCurrency: 'USD', localCurrency: 'TRY', language: 'tr', showTRY: true, notifications: true };
+    const defaults = { displayCurrency: 'USD', localCurrency: 'TRY', baseCurrency: 'USD', language: 'tr', showTRY: true, notifications: true };
     return data ? { ...defaults, ...JSON.parse(data), displayCurrency: 'USD' } : defaults;
   },
 

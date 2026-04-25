@@ -34,7 +34,7 @@ export const PortfolioProvider = ({ children }) => {
       setLoading(true);
       const data = await apiClient.get('/investment/portfolio');
       // Normalize _id → id so the rest of the app keeps using h.id
-      setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id })));
+      setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id, baseCurrency: h.baseCurrency || 'USD' })));
     } catch (e) {
       console.error('Load holdings error:', e);
     } finally {
@@ -67,6 +67,13 @@ export const PortfolioProvider = ({ children }) => {
     if (!user) throw new Error('Not authenticated');
     await apiClient.delete('/investment/portfolio/usd/all');
     setHoldings((prev) => prev.filter((h) => h.assetId !== 'usd'));
+  };
+
+  const deleteBaseCurrencyHoldings = async (currency) => {
+    if (!user) throw new Error('Not authenticated');
+    const upperCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+    await apiClient.delete(`/investment/portfolio/base/${upperCurrency}`);
+    setHoldings((prev) => prev.filter((h) => (h.baseCurrency || 'USD') !== upperCurrency));
   };
 
   const clearPortfolio = async () => {
@@ -160,6 +167,7 @@ export const PortfolioProvider = ({ children }) => {
         updateHolding,
         deleteHolding,
         deleteUsdHoldings,
+        deleteBaseCurrencyHoldings,
         clearPortfolio,
         computeStats,
         getGroupedHoldings,

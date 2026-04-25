@@ -17,9 +17,9 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
-import { convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
+import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
 
-function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, iconBg }) {
+function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg }) {
   const isPositive = change >= 0;
 
   return (
@@ -32,8 +32,16 @@ function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, i
         {subLabel ? <Text style={styles.rateSubLabel}>{subLabel}</Text> : null}
       </View>
       <View style={styles.rateValues}>
-        <Text style={styles.rateValue}>{value}</Text>
-        {subValue ? <Text style={styles.rateSubValue}>{subValue}</Text> : null}
+        <View style={styles.rateValueRow}>
+          {valueLabel ? <Text style={styles.rateValueLabel}>{valueLabel}</Text> : null}
+          <Text style={styles.rateValue}>{value}</Text>
+        </View>
+        {subValue ? (
+          <View style={styles.rateValueRow}>
+            {subValueLabel ? <Text style={styles.rateSubValueLabel}>{subValueLabel}</Text> : null}
+            <Text style={styles.rateSubValue}>{subValue}</Text>
+          </View>
+        ) : null}
         {change !== undefined && change !== null ? (
           <View style={[styles.changeBadge, { backgroundColor: isPositive ? Colors.successLight : Colors.dangerLight }]}>
             <Ionicons
@@ -51,16 +59,29 @@ function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, i
   );
 }
 
-function formatDisplayValue(value, formatter, decimals = 2) {
-  if (value === null || value === undefined) return '-';
-  return formatter(value, decimals);
+function getHoldingCostBaseValue(holding, {
+  activeBaseAssetId,
+  baseCurrency,
+  localCurrency,
+  prices,
+}) {
+  if (
+    holding.assetId === activeBaseAssetId &&
+    holding.buyLocalCurrency === localCurrency &&
+    holding.buyLocalTotal != null
+  ) {
+    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
+    return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
+  }
+
+  return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
-  const { computeStats } = usePortfolio();
-  const { localCurrency, t } = useSettings();
+  const { holdings, computeStats } = usePortfolio();
+  const { localCurrency, baseCurrency, t } = useSettings();
   const [selectedSection, setSelectedSection] = useState('forex');
 
   const getAssetPrice = (id) => {
@@ -103,39 +124,80 @@ export default function HomeScreen() {
     : '--:--';
 
   const totalUSD = portfolioStats?.totalCurrentUSD || 0;
+  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
+  const totalCostBase = (holdings || []).reduce(
+    (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
+      activeBaseAssetId,
+      baseCurrency,
+      localCurrency,
+      prices,
+    }) || 0),
+    0
+  );
+  const totalBase = convertUSDToCurrency(totalUSD, baseCurrency, prices);
   const totalLocal = convertUSDToCurrency(totalUSD, localCurrency, prices);
-  const plUSD = portfolioStats?.totalPLUSD || 0;
-  const plPct = portfolioStats?.totalPLPercent || 0;
+  const plBase = totalBase - totalCostBase;
+  const plPct = totalCostBase > 0 ? (plBase / totalCostBase) * 100 : 0;
+  const portfolioSubValue = localCurrency !== baseCurrency
+    ? formatCurrency(totalLocal, localCurrency)
+    : formatUSD(totalUSD);
 
-  const localSub = (usdValue, decimals = 2) =>
-    usdValue == null ? '-' : formatCurrency(convertUSDToCurrency(usdValue, localCurrency, prices), localCurrency, decimals);
+  const baseValue = (usdValue, decimals = 2) =>
+    usdValue == null ? '-' : formatCurrency(convertUSDToCurrency(usdValue, baseCurrency, prices), baseCurrency, decimals);
+  const baseSubValue = (usdValue, decimals = 2) => {
+    if (usdValue == null) return '-';
+    if (localCurrency !== baseCurrency) {
+      return formatCurrency(convertUSDToCurrency(usdValue, localCurrency, prices), localCurrency, decimals);
+    }
+    return formatUSD(usdValue, decimals);
+  };
 
   const formatForexCard = (assetCode, usdPrice) => {
     const upperCode = assetCode.toUpperCase();
+    const displayPairLabel = `${upperCode}/${localCurrency}`;
+    const basePairLabel = `${upperCode}/${baseCurrency}`;
 
     if (usdPrice == null) {
-      return { value: '--', subValue: null, subLabel: `${upperCode} / ${localCurrency}` };
+      return {
+        value: '--',
+        valueLabel: displayPairLabel,
+        subValue: null,
+        subValueLabel: basePairLabel,
+        subLabel: null,
+      };
     }
 
     if (localCurrency === upperCode) {
       return {
-        value: formatUSD(usdPrice, 4),
-        subValue: `1 ${upperCode}`,
-        subLabel: `${upperCode} / USD`,
+        value: formatCurrency(convertUSDToCurrency(usdPrice, localCurrency, prices), localCurrency, 4),
+        valueLabel: displayPairLabel,
+        subValue: baseCurrency === upperCode
+          ? `1 ${upperCode}`
+          : formatCurrency(convertUSDToCurrency(usdPrice, baseCurrency, prices), baseCurrency, 4),
+        subValueLabel: basePairLabel,
+        subLabel: null,
       };
     }
 
     return {
       value: formatCurrency(convertUSDToCurrency(usdPrice, localCurrency, prices), localCurrency, 4),
-      subValue: formatUSD(usdPrice, 4),
-      subLabel: `${upperCode} / ${localCurrency}`,
+      valueLabel: displayPairLabel,
+      subValue: baseCurrency === upperCode
+        ? `1 ${upperCode}`
+        : formatCurrency(convertUSDToCurrency(usdPrice, baseCurrency, prices), baseCurrency, 4),
+      subValueLabel: basePairLabel,
+      subLabel: null,
     };
   };
 
   const dollarRate = {
     value: formatCurrency(convertUSDToCurrency(1, localCurrency, prices), localCurrency, 4),
-    subValue: '1 USD',
-    subLabel: `USD / ${localCurrency}`,
+    valueLabel: `USD/${localCurrency}`,
+    subValue: baseCurrency === 'USD'
+      ? '1 USD'
+      : formatCurrency(convertUSDToCurrency(1, baseCurrency, prices), baseCurrency, 4),
+    subValueLabel: `USD/${baseCurrency}`,
+    subLabel: null,
   };
   const euroRate = formatForexCard('eur', eurUsd);
   const poundRate = formatForexCard('gbp', gbpUsd);
@@ -163,22 +225,22 @@ export default function HomeScreen() {
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 8 }} />
             ) : (
               <>
-                <Text style={styles.portfolioValueUSD}>{formatUSD(totalUSD)}</Text>
-                <Text style={styles.portfolioValueTRY}>{formatCurrency(totalLocal, localCurrency)}</Text>
+                <Text style={styles.portfolioValueUSD}>{formatCurrency(totalBase, baseCurrency)}</Text>
+                <Text style={styles.portfolioValueTRY}>{portfolioSubValue}</Text>
                 <View style={styles.portfolioPLRow}>
                   <View
                     style={[
                       styles.plBadge,
-                      { backgroundColor: plUSD >= 0 ? Colors.successLight : Colors.dangerLight },
+                      { backgroundColor: plBase >= 0 ? Colors.successLight : Colors.dangerLight },
                     ]}
                   >
                     <Ionicons
-                      name={plUSD >= 0 ? 'trending-up' : 'trending-down'}
+                      name={plBase >= 0 ? 'trending-up' : 'trending-down'}
                       size={13}
-                      color={plUSD >= 0 ? Colors.success : Colors.danger}
+                      color={plBase >= 0 ? Colors.success : Colors.danger}
                     />
-                    <Text style={[styles.plText, { color: plUSD >= 0 ? Colors.success : Colors.danger }]}>
-                      {plUSD >= 0 ? '+' : ''}{formatUSD(plUSD)} ({formatPercent(plPct)})
+                    <Text style={[styles.plText, { color: plBase >= 0 ? Colors.success : Colors.danger }]}>
+                      {plBase >= 0 ? '+' : ''}{formatCurrency(plBase, baseCurrency)} ({formatPercent(plPct)})
                     </Text>
                   </View>
                   <Text style={styles.plLabel}>{t('total_profit_loss')}</Text>
@@ -232,7 +294,9 @@ export default function HomeScreen() {
                   label={t('dollar')}
                   subLabel={dollarRate.subLabel}
                   value={dollarRate.value}
+                  valueLabel={dollarRate.valueLabel}
                   subValue={dollarRate.subValue}
+                  subValueLabel={dollarRate.subValueLabel}
                   icon="cash-outline"
                   iconColor="#16A34A"
                   iconBg="#DCFCE7"
@@ -241,7 +305,9 @@ export default function HomeScreen() {
                   label={t('euro')}
                   subLabel={euroRate.subLabel}
                   value={euroRate.value}
+                  valueLabel={euroRate.valueLabel}
                   subValue={euroRate.subValue}
+                  subValueLabel={euroRate.subValueLabel}
                   icon="logo-euro"
                   iconColor={Colors.primary}
                   iconBg={Colors.accentLight}
@@ -250,7 +316,9 @@ export default function HomeScreen() {
                   label={t('pound')}
                   subLabel={poundRate.subLabel}
                   value={poundRate.value}
+                  valueLabel={poundRate.valueLabel}
                   subValue={poundRate.subValue}
+                  subValueLabel={poundRate.subValueLabel}
                   icon="cash-outline"
                   iconColor="#0F766E"
                   iconBg="#CCFBF1"
@@ -263,8 +331,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('gram_gold')}
                   subLabel="995/1000"
-                  value={formatDisplayValue(goldGramUSD, formatUSD, 2)}
-                  subValue={localSub(goldGramUSD, 2)}
+                  value={baseValue(goldGramUSD, 2)}
+                  subValue={baseSubValue(goldGramUSD, 2)}
                   icon="medal-outline"
                   iconColor={Colors.gold}
                   iconBg={Colors.warningLight}
@@ -272,8 +340,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('gram_silver')}
                   subLabel="995/1000"
-                  value={formatDisplayValue(silverGramUSD, formatUSD, 4)}
-                  subValue={localSub(silverGramUSD, 2)}
+                  value={baseValue(silverGramUSD, 4)}
+                  subValue={baseSubValue(silverGramUSD, 2)}
                   icon="medal-outline"
                   iconColor={Colors.silver}
                   iconBg={Colors.borderLight}
@@ -281,8 +349,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('ounce_gold')}
                   subLabel="Troy oz / USD"
-                  value={formatDisplayValue(goldOzUSD, formatUSD, 2)}
-                  subValue={localSub(goldOzUSD, 2)}
+                  value={baseValue(goldOzUSD, 2)}
+                  subValue={baseSubValue(goldOzUSD, 2)}
                   icon="medal-outline"
                   iconColor={Colors.gold}
                   iconBg={Colors.warningLight}
@@ -290,8 +358,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('ounce_silver')}
                   subLabel="Troy oz / USD"
-                  value={formatDisplayValue(silverOzUSD, formatUSD, 2)}
-                  subValue={localSub(silverOzUSD, 2)}
+                  value={baseValue(silverOzUSD, 2)}
+                  subValue={baseSubValue(silverOzUSD, 2)}
                   icon="medal-outline"
                   iconColor={Colors.silver}
                   iconBg={Colors.borderLight}
@@ -304,8 +372,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('bitcoin')}
                   subLabel="BTC / USD"
-                  value={formatDisplayValue(prices?.crypto?.btc?.usd, formatUSD)}
-                  subValue={localSub(prices?.crypto?.btc?.usd, 2)}
+                  value={baseValue(prices?.crypto?.btc?.usd, 2)}
+                  subValue={baseSubValue(prices?.crypto?.btc?.usd, 2)}
                   change={btcChange}
                   icon="logo-bitcoin"
                   iconColor="#F7931A"
@@ -314,8 +382,8 @@ export default function HomeScreen() {
                 <RateCard
                   label="Ethereum"
                   subLabel="ETH / USD"
-                  value={formatDisplayValue(prices?.crypto?.eth?.usd, formatUSD)}
-                  subValue={localSub(prices?.crypto?.eth?.usd, 2)}
+                  value={baseValue(prices?.crypto?.eth?.usd, 2)}
+                  subValue={baseSubValue(prices?.crypto?.eth?.usd, 2)}
                   change={ethChange}
                   icon="logo-bitcoin"
                   iconColor="#627EEA"
@@ -324,8 +392,8 @@ export default function HomeScreen() {
                 <RateCard
                   label="BNB"
                   subLabel="BNB / USD"
-                  value={formatDisplayValue(prices?.crypto?.bnb?.usd, formatUSD)}
-                  subValue={localSub(prices?.crypto?.bnb?.usd, 2)}
+                  value={baseValue(prices?.crypto?.bnb?.usd, 2)}
+                  subValue={baseSubValue(prices?.crypto?.bnb?.usd, 2)}
                   change={bnbChange}
                   icon="cube-outline"
                   iconColor="#F0B90B"
@@ -334,8 +402,8 @@ export default function HomeScreen() {
                 <RateCard
                   label={t('ripple')}
                   subLabel="XRP / USD"
-                  value={formatDisplayValue(prices?.crypto?.xrp?.usd, formatUSD, 4)}
-                  subValue={localSub(prices?.crypto?.xrp?.usd, 4)}
+                  value={baseValue(prices?.crypto?.xrp?.usd, 4)}
+                  subValue={baseSubValue(prices?.crypto?.xrp?.usd, 4)}
                   change={xrpChange}
                   icon="water-outline"
                   iconColor="#00AAE4"
@@ -501,8 +569,11 @@ const styles = StyleSheet.create({
   rateInfo: { flex: 1 },
   rateLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   rateSubLabel: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
-  rateValues: { alignItems: 'flex-end', gap: 2 },
+  rateValues: { minWidth: 172, alignItems: 'stretch', gap: 4 },
+  rateValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  rateValueLabel: { fontSize: 11, color: Colors.textLight, fontWeight: '600', width: 78, textAlign: 'left' },
   rateValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  rateSubValueLabel: { fontSize: 11, color: Colors.textLight, fontWeight: '600', width: 78, textAlign: 'left' },
   rateSubValue: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   changeBadge: {
     flexDirection: 'row',

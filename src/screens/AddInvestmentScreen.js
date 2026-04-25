@@ -191,7 +191,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { addHolding } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
-  const { localCurrency, language, t } = useSettings();
+  const { localCurrency, baseCurrency, language, t } = useSettings();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -200,9 +200,20 @@ export default function AddInvestmentScreen({ navigation }) {
   const [buyPrice, setBuyPrice] = useState('');
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
+  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const isUsdAsset = selectedAsset?.id === 'usd';
+  const isBaseCurrencyAsset = selectedAsset?.id === activeBaseAssetId;
+  const baseAssetManualRateInfo = language === 'en'
+    ? `For the ${baseCurrency} base asset, the purchase rate is entered manually in the local currency.`
+    : `${baseCurrency} bazli varlikta alis kuru yerel para birimi uzerinden manuel girilir.`;
+  const baseAssetSaveRateMissing = language === 'en'
+    ? 'Purchase rate is missing; the base-currency transaction could not be saved.'
+    : 'Alis kuru girilmedi, baz para birimi islemi kaydedilemedi.';
 
-  const priceCurrencyOptions = useMemo(() => getLocalCurrencyOptions(localCurrency), [localCurrency]);
+  const priceCurrencyOptions = useMemo(
+    () => getLocalCurrencyOptions(localCurrency, baseCurrency),
+    [baseCurrency, localCurrency]
+  );
 
   const pickerAssets = useMemo(
     () =>
@@ -222,25 +233,32 @@ export default function AddInvestmentScreen({ navigation }) {
 
   useEffect(() => {
     if (!selectedAsset) return;
-    if (selectedAsset.id === 'usd') {
+    if (selectedAsset.id === activeBaseAssetId) {
       setPriceCurrency(localCurrency);
-      setBuyPrice(localCurrency === 'USD' ? '1' : '');
+      setBuyPrice(localCurrency === baseCurrency ? '1' : '');
       return;
     }
 
     setPriceCurrency(localCurrency);
     setBuyPrice('');
-  }, [localCurrency, selectedAsset?.id]);
+  }, [activeBaseAssetId, baseCurrency, localCurrency, selectedAsset?.id]);
 
   const currentMarketPriceUSD = selectedAsset ? getAssetPrice(selectedAsset.id) : null;
   const currentMarketPrice = currentMarketPriceUSD
-    ? (priceCurrency === 'USD' ? currentMarketPriceUSD : convertUSDToCurrency(currentMarketPriceUSD, priceCurrency, prices))
+    ? convertUSDToCurrency(currentMarketPriceUSD, isBaseCurrencyAsset ? localCurrency : priceCurrency, prices)
     : null;
   const localMarketPrice = currentMarketPriceUSD ? convertUSDToCurrency(currentMarketPriceUSD, localCurrency, prices) : null;
-  const buyPriceNumber = isUsdAsset
-    ? (localCurrency === 'USD' ? 1 : (parseFloat(buyPrice) || 0))
+  const baseMarketPrice = currentMarketPriceUSD ? convertUSDToCurrency(currentMarketPriceUSD, baseCurrency, prices) : null;
+  const buyPriceNumber = isBaseCurrencyAsset
+    ? (localCurrency === baseCurrency ? 1 : (parseFloat(buyPrice) || 0))
     : (parseFloat(buyPrice) || 0);
-  const buyPriceUSD = isUsdAsset ? 1 : convertCurrencyToUSD(buyPriceNumber, priceCurrency, prices);
+  const buyPriceUSD = isUsdAsset
+    ? 1
+    : convertCurrencyToUSD(
+      buyPriceNumber,
+      isBaseCurrencyAsset ? localCurrency : priceCurrency,
+      prices
+    );
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
   const totalCostLocal = convertUSDToCurrency(totalCostUSD, localCurrency, prices);
@@ -248,11 +266,6 @@ export default function AddInvestmentScreen({ navigation }) {
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
 
   const autofillPrice = () => {
-    if (isUsdAsset) {
-      Alert.alert(t('info'), t('usd_manual_rate_info'));
-      return;
-    }
-
     if (!currentMarketPrice) {
       Alert.alert(t('price_unavailable'), t('price_unavailable_sub'));
       return;
@@ -263,8 +276,8 @@ export default function AddInvestmentScreen({ navigation }) {
   const validate = () => {
     if (!selectedAsset) return t('select_asset_error');
     if (!amount || amountNumber <= 0) return t('valid_amount_error');
-    if (isUsdAsset && localCurrency !== 'USD' && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
-    if (!isUsdAsset && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
+    if (isBaseCurrencyAsset && localCurrency !== baseCurrency && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
+    if (!isBaseCurrencyAsset && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
     if (!date) return t('select_date_error');
     return null;
   };
@@ -282,12 +295,12 @@ export default function AddInvestmentScreen({ navigation }) {
       let buyFxLocalPerUSD = null;
       let buyLocalTotal = null;
 
-      if (isUsdAsset) {
+      if (isBaseCurrencyAsset) {
         buyLocalCurrency = localCurrency;
-        buyFxLocalPerUSD = localCurrency === 'USD' ? 1 : buyPriceNumber;
+        buyFxLocalPerUSD = buyPriceNumber;
 
         if (buyFxLocalPerUSD == null) {
-          Alert.alert(t('error'), t('usd_save_rate_missing'));
+          Alert.alert(t('error'), baseAssetSaveRateMissing);
           setLoading(false);
           return;
         }
@@ -304,6 +317,7 @@ export default function AddInvestmentScreen({ navigation }) {
         buyDate: toIstanbulDateStr(date),
         amount: amountNumber,
         buyPriceUSD,
+        baseCurrency,
         buyLocalCurrency,
         buyFxLocalPerUSD,
         buyLocalTotal,
@@ -314,7 +328,7 @@ export default function AddInvestmentScreen({ navigation }) {
         { text: t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      Alert.alert(t('error'), t('add_investment_error'));
+      Alert.alert(t('error'), error?.message || t('add_investment_error'));
     } finally {
       setLoading(false);
     }
@@ -382,8 +396,8 @@ export default function AddInvestmentScreen({ navigation }) {
                 </View>
               </FormRow>
 
-              <FormRow label={isUsdAsset ? `${t('buy_rate_label')} (${localCurrency}/USD) *` : `${t('purchase_price')} (${priceCurrency}) *`}>
-                {!isUsdAsset && (
+              <FormRow label={isBaseCurrencyAsset ? `${t('buy_rate_label')} (${localCurrency}/${baseCurrency}) *` : `${t('purchase_price')} (${priceCurrency}) *`}>
+                {!isBaseCurrencyAsset && (
                   <View style={styles.currencyTabs}>
                     {priceCurrencyOptions.map((currency) => (
                       <TouchableOpacity
@@ -399,14 +413,16 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                 )}
 
-                {!isUsdAsset && currentMarketPrice && (
+                {!isBaseCurrencyAsset && currentMarketPrice && (
                   <View style={styles.marketPriceInfo}>
                     <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
                     <Text style={styles.marketPriceText}>
                       {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, priceCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
                     </Text>
-                    {priceCurrency !== 'USD' && currentMarketPriceUSD ? (
-                      <Text style={styles.marketPriceSub}>USD: {formatUSD(currentMarketPriceUSD, currentMarketPriceUSD < 1 ? 4 : 2)}</Text>
+                    {priceCurrency !== baseCurrency && baseMarketPrice ? (
+                      <Text style={styles.marketPriceSub}>
+                        {baseCurrency}: {formatCurrency(baseMarketPrice, baseCurrency, baseMarketPrice < 1 ? 4 : 2)}
+                      </Text>
                     ) : null}
                     {priceCurrency !== localCurrency && localMarketPrice ? (
                       <Text style={styles.marketPriceSub}>{localCurrency}: {formatCurrency(localMarketPrice, localCurrency, localMarketPrice < 1 ? 4 : 2)}</Text>
@@ -417,13 +433,13 @@ export default function AddInvestmentScreen({ navigation }) {
                   </View>
                 )}
 
-                {isUsdAsset && localCurrency !== 'USD' && currentMarketPrice && (
+                {isBaseCurrencyAsset && currentMarketPrice && (
                   <View style={styles.marketPriceInfo}>
                     <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
                     <Text style={styles.marketPriceText}>
-                      {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, 2)}</Text>
+                      {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
                     </Text>
-                    <Text style={styles.marketPriceSub}>{t('usd_manual_rate_info')}</Text>
+                    <Text style={styles.marketPriceSub}>{baseAssetManualRateInfo}</Text>
                     <TouchableOpacity
                       style={styles.autofillBtn}
                       onPress={() => setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)))}
@@ -444,12 +460,12 @@ export default function AddInvestmentScreen({ navigation }) {
                     value={buyPrice}
                     onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
                     keyboardType="decimal-pad"
-                    editable={!(isUsdAsset && localCurrency === 'USD')}
+                    editable={!(isBaseCurrencyAsset && localCurrency === baseCurrency)}
                   />
                 </View>
-                {isUsdAsset ? (
+                {isBaseCurrencyAsset ? (
                   <Text style={styles.marketPriceSub}>
-                    {t('buy_rate_label')}: 1 USD = {localCurrency}
+                    {t('buy_rate_label')}: 1 {baseCurrency} = {localCurrency}
                   </Text>
                 ) : null}
               </FormRow>

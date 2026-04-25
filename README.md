@@ -1,17 +1,58 @@
-# Portföy — Yatırım Takip Uygulaması
+# Portföy
 
-`invesment-app`, Expo ile geliştirilen INVESTMENT istemcisidir. Uygulama login, piyasa verisi görüntüleme, portföy yönetimi ve ayarlar akışlarını taşır.
+`invesment-app`, Expo ile geliştirilen INVESTMENT istemcisidir. Uygulama e-posta kodu ile giriş, piyasa verisi görüntüleme, portföy yönetimi ve kullanıcı ayarları akışlarını içerir.
 
-Bu repo frontend tarafını içerir. Backend karşılığı [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md) içindeki `INVESTMENT` ve `SHAREDBACKEND` alanlarıdır.
+Backend karşılığı:
 
-## Bu Uygulamanın Backend Alanları
+- [project1-be](C:/Users/mertc/Desktop/Dev/project1-be/README.md)
 
 Bu istemci backend tarafında şu alanlarla konuşur:
 
 - `INVESTMENT`
 - `SHAREDBACKEND`
 
-`INVESTMENT`, piyasa verisi ve portföy verilerini taşır. `SHAREDBACKEND`, ortak auth, kullanıcı ve log katmanını sağlar.
+## Özellikler
+
+- e-posta kodu ile giriş
+- döviz, kıymetli maden ve kripto fiyatları
+- portföy CRUD
+- baz para birimi ve görüntüleme para birimi ayarları
+- support iletişim bilgisi
+- Türkçe / İngilizce dil desteği
+
+Bugün desteklenen para birimleri:
+
+- `TRY`
+- `EUR`
+- `GBP`
+- `USD`
+
+Bugün öne çıkan piyasa varlıkları:
+
+- forex: `USD`, `EUR`, `GBP`
+- metaller: gram / ons altın, gram / ons gümüş
+- kripto: `BTC`, `ETH`, `BNB`, `XRP`
+
+## Para Birimi Modeli
+
+Uygulamada iki ayrı para birimi kavramı vardır:
+
+### Baz Para Birimi
+
+- portföyün ana referans para birimidir
+- toplam değer, maliyet ve kar/zarar bu para birimine göre ana eksende yorumlanır
+- değiştirildiğinde mevcut portföy sıfırlanır
+
+### Görüntüleme Para Birimi
+
+- rakamların ekranda hangi para biriminde gösterileceğini belirler
+- ana portföy mantığını değil, sunumu değiştirir
+- bazı base-currency bağlı kayıtlar etkilenebileceği için uygulama gerektiğinde kullanıcıyı uyarır
+
+Önemli not:
+
+- sistemin normalize hesap omurgası halen USD verisi üzerinden çalışır
+- `baseCurrency`, bugün tam anlamıyla alternatif bir hesap motoru değil; kayıt bağlamı ve ana gösterim referansı olarak kullanılır
 
 ## API Endpoint'leri
 
@@ -21,74 +62,79 @@ Bu istemci backend tarafında şu alanlarla konuşur:
 | `POST` | `/users/verifyLoginCode` | Hayır | Kod doğrulanır, JWT döner |
 | `GET` | `/users/me` | Evet | Oturum bilgisi |
 | `DELETE` | `/users/me` | Evet | Hesap silme |
-| `GET` | `/investment/market` | Hayır | Döviz, metal ve kripto anlık fiyatlar |
-| `GET` | `/investment/portfolio` | Evet | Kullanıcının portföy kalemleri |
+| `GET` | `/investment/market` | Hayır | Döviz, metal ve kripto fiyatları |
+| `GET` | `/investment/profile` | Evet | Profil bilgisi |
+| `PUT` | `/investment/profile` | Evet | Profil güncelleme |
+| `GET` | `/investment/portfolio` | Evet | Portföy kalemleri |
 | `POST` | `/investment/portfolio` | Evet | Yeni kalem ekle |
 | `PUT` | `/investment/portfolio/:id` | Evet | Kalem güncelle |
 | `DELETE` | `/investment/portfolio/:id` | Evet | Kalem sil |
+| `DELETE` | `/investment/portfolio/base/:currency` | Evet | Belirli base currency kayıtlarını sil |
+| `DELETE` | `/investment/portfolio/all` | Evet | Tüm portföyü temizle |
 
 ## Frontend-Backend Entegrasyonu
 
-Backend istemcisi [src/services/apiClient.js](/Users/airm4/Desktop/dev/invesment-app/src/services/apiClient.js) içinde tanımlıdır.
+Backend istemcisi:
+
+- [src/services/apiClient.js](C:/Users/mertc/Desktop/Dev/invesment-app/src/services/apiClient.js)
 
 Davranış:
 
 - `EXPO_PUBLIC_BACKEND_URL` kullanılır
-- fallback olarak production backend URL'i bulunur
 - auth token AsyncStorage içinde tutulur
+- auth çağrılarında app değeri `investment` olarak gönderilir
 
-Auth çağrılarında app değeri `investment` olarak gönderilir:
-
-- [src/context/AuthContext.js](/Users/airm4/Desktop/dev/invesment-app/src/context/AuthContext.js)
-
-İstemcinin konuştuğu ana backend namespace'leri:
+Ana namespace'ler:
 
 - `/users`
 - `/investment`
 
-## Backend Koleksiyonları
+## Piyasa Verisi
 
-### `SHAREDBACKEND`
+Backend tarafında:
 
-- `SHAREDBACKEND_USERS`
-- `SHAREDBACKEND_LOGS`
+- OpenExchangeRates -> forex + metal türetmeleri
+- CoinMarketCap -> kripto snapshot'ları
 
-### `INVESTMENT`
+İstemci bu verileri:
 
-Bu uygulamaya ait MongoDB koleksiyonları `INVESTMENT_` ile başlar. Örnekler:
+- `/investment/market`
 
-- `INVESTMENT_HOLDINGS`
-- `INVESTMENT_MARKET_RATES`
-- `INVESTMENT_CRYPTO_QUOTES`
-- `INVESTMENT_USER_INFO`
+endpoint'i üzerinden çeker.
 
-Not:
+## Versiyon ve Konfigürasyon
 
-- market scheduler logları `SHAREDBACKEND_LOGS` içine yazılır ve log kaynağı `INVESTMENT` olarak işaretlenir.
+Uygulama versiyonu:
 
-## Piyasa Verileri
+- [app.json](C:/Users/mertc/Desktop/Dev/invesment-app/app.json)
 
-| Kaynak | Kapsam | Güncelleme |
-|---|---|---|
-| OpenExchangeRates | Döviz kurları + değerli metaller | Saatte bir |
-| CoinMarketCap | BTC, BNB, XRP | 5 dakikada bir |
+Ayarlar ekranındaki version bilgisi buradan okunur.
 
-Veriler backend'de saklanır; istemci bunları `/investment/market` üzerinden çeker.
+Backend URL:
+
+- `.env`
+
+Örnek:
+
+```env
+EXPO_PUBLIC_BACKEND_URL=https://project1-be-1.onrender.com
+```
 
 ## Proje Yapısı
 
 ```text
 invesment-app/
-├── App.js
-├── src/
-│   ├── components/
-│   ├── context/
-│   ├── navigation/
-│   ├── screens/
-│   ├── services/
-│   ├── theme/
-│   └── utils/
-└── README.md
+|-- App.js
+|-- app.json
+|-- src/
+|   |-- components/
+|   |-- context/
+|   |-- navigation/
+|   |-- screens/
+|   |-- services/
+|   |-- theme/
+|   `-- utils/
+`-- README.md
 ```
 
 ## Kurulum
@@ -98,7 +144,7 @@ cd invesment-app
 npm install
 ```
 
-`.env` örneği:
+`.env` dosyası oluşturun:
 
 ```env
 EXPO_PUBLIC_BACKEND_URL=https://project1-be-1.onrender.com
@@ -118,6 +164,12 @@ npm run ios
 npm run web
 ```
 
+## Geliştirme Notları
+
+- Ayarlar ekranındaki baz / görüntüleme para birimi davranışları ürün açısından kritiktir; backend davranışıyla uyumlu tutulmalıdır.
+- Base currency asset'i için yatırım ekleme ekranında özel local-rate girişi vardır.
+- Ana sayfa ve portföy ekranları artık base currency'yi ana gösterim, display currency'yi ikincil gösterim olarak kullanır.
+
 ## İlgili Repo
 
-- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)
+- [project1-be](C:/Users/mertc/Desktop/Dev/project1-be/README.md)

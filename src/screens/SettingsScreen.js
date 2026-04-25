@@ -50,9 +50,14 @@ function SectionHeader({ title }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, clearPortfolio, deleteUsdHoldings } = usePortfolio();
+  const { holdings, clearPortfolio, deleteBaseCurrencyHoldings } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
-  const { localCurrency, setLocalCurrency, language, setLanguage, t } = useSettings();
+  const { localCurrency, setLocalCurrency, baseCurrency, setCurrencyPreferences, language, setLanguage, t } = useSettings();
+
+  const interpolate = (key, params = {}) =>
+    Object.entries(params).reduce((message, [paramKey, value]) => (
+      message.replace(new RegExp(`{{${paramKey}}}`, 'g'), String(value))
+    ), t(key));
 
   const handleLogout = () => {
     Alert.alert(t('logout_confirm_title'), t('logout_confirm_sub'), [
@@ -110,15 +115,15 @@ export default function SettingsScreen() {
   const handleLocalCurrencyChange = (nextCurrency) => {
     if (nextCurrency === localCurrency) return;
 
-    const hasUsdHoldings = holdings.some((h) => h.assetId === 'usd');
-    if (!hasUsdHoldings) {
+    const hasBaseCurrencyHoldings = holdings.some((h) => (h.baseCurrency || 'USD') === baseCurrency);
+    if (!hasBaseCurrencyHoldings) {
       setLocalCurrency(nextCurrency);
       return;
     }
 
     Alert.alert(
       t('local_currency_change_title'),
-      t('local_currency_change_body'),
+      interpolate('local_currency_change_body_dynamic', { baseCurrency }),
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -126,9 +131,34 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteUsdHoldings();
+              await deleteBaseCurrencyHoldings(baseCurrency);
               await setLocalCurrency(nextCurrency);
-              Alert.alert(t('success'), t('local_currency_changed_with_usd_deleted'));
+              Alert.alert(t('success'), interpolate('local_currency_changed_with_base_deleted', { baseCurrency }));
+            } catch (err) {
+              Alert.alert(t('error'), t('operation_failed_retry'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBaseCurrencyChange = (nextCurrency) => {
+    if (nextCurrency === baseCurrency) return;
+
+    Alert.alert(
+      t('base_currency_change_title'),
+      t('base_currency_change_body'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('base_currency_change_confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearPortfolio();
+              await setCurrencyPreferences({ baseCurrency: nextCurrency, localCurrency: nextCurrency });
+              Alert.alert(t('success'), t('base_currency_changed_and_portfolio_reset'));
             } catch (err) {
               Alert.alert(t('error'), t('operation_failed_retry'));
             }
@@ -203,8 +233,25 @@ export default function SettingsScreen() {
             iconColor={Colors.success}
             iconBg={Colors.successLight}
             label={t('base_currency')}
-            sub={t('base_currency_fixed')}
+            sub={`${baseCurrency} · ${t('base_currency_sub')}`}
           />
+          <View style={styles.currencyDetailBox}>
+            <Text style={styles.currencyDetailText}>{t('base_currency_details')}</Text>
+            <Text style={styles.currencyDetailWarning}>{t('base_currency_details_warning')}</Text>
+          </View>
+          <View style={styles.currencySelector}>
+            {LOCAL_CURRENCY_OPTIONS.map((currency) => (
+              <TouchableOpacity
+                key={`base-${currency}`}
+                style={[styles.currencyOption, baseCurrency === currency && styles.currencyOptionActive]}
+                onPress={() => handleBaseCurrencyChange(currency)}
+              >
+                <Text style={[styles.currencyOptionText, baseCurrency === currency && styles.currencyOptionTextActive]}>
+                  {currency}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <View style={styles.divider} />
           <SettingRow
             icon="flag-outline"
@@ -213,6 +260,10 @@ export default function SettingsScreen() {
             label={t('local_currency')}
             sub={t('local_currency_sub')}
           />
+          <View style={styles.currencyDetailBox}>
+            <Text style={styles.currencyDetailText}>{t('local_currency_details')}</Text>
+            <Text style={styles.currencyDetailWarning}>{t('local_currency_details_warning')}</Text>
+          </View>
           <View style={styles.currencySelector}>
             {LOCAL_CURRENCY_OPTIONS.map((currency) => (
               <TouchableOpacity
@@ -225,13 +276,6 @@ export default function SettingsScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
-        </View>
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
-          <View style={styles.infoBoxTextWrap}>
-            <Text style={styles.infoBoxTitle}>{t('currency_info_title')}</Text>
-            <Text style={styles.infoBoxText}>{t('currency_info_body')}</Text>
           </View>
         </View>
 
@@ -419,6 +463,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 14,
   },
+  currencyDetailBox: {
+    marginHorizontal: 14,
+    marginBottom: 12,
+    marginTop: -2,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  currencyDetailText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  currencyDetailWarning: {
+    fontSize: 12,
+    color: Colors.textPrimary,
+    lineHeight: 18,
+    fontWeight: '600',
+    marginTop: 6,
+  },
   currencyOption: {
     flex: 1,
     alignItems: 'center',
@@ -440,31 +506,6 @@ const styles = StyleSheet.create({
   },
   currencyOptionTextActive: {
     color: Colors.primary,
-  },
-
-  infoBox: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: Colors.accentLight,
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  infoBoxTextWrap: {
-    flex: 1,
-  },
-  infoBoxTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 3,
-  },
-  infoBoxText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
   },
 
   disclaimer: {

@@ -51,6 +51,6 @@ export function getLocalPerUsd(currency, prices) {
   return getUsdToCurrencyRate(currency, prices);
 }
 
-export function getLocalCurrencyOptions(localCurrency) {
-  return Array.from(new Set([localCurrency, 'USD']));
+export function getLocalCurrencyOptions(localCurrency, baseCurrency = 'USD') {
+  return Array.from(new Set([localCurrency, baseCurrency]));
 }

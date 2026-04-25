@@ -227,6 +227,13 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
+          <View style={styles.infoBoxTextWrap}>
+            <Text style={styles.infoBoxTitle}>{t('currency_info_title')}</Text>
+            <Text style={styles.infoBoxText}>{t('currency_info_body')}</Text>
+          </View>
+        </View>
 
         <SectionHeader title={t('language')} />
         <View style={styles.card}>
@@ -269,6 +276,7 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           {[
             { icon: 'information-circle-outline', label: t('version'), sub: appVersion, color: Colors.primary },
+            { icon: 'mail-outline', label: t('support'), sub: t('support_sub'), color: Colors.success },
             { icon: 'alert-circle-outline', label: t('disclaimer_title'), sub: t('disclaimer_short'), color: Colors.warning },
           ].map((item, index) => (
             <React.Fragment key={item.label}>
@@ -432,6 +440,31 @@ const styles = StyleSheet.create({
   },
   currencyOptionTextActive: {
     color: Colors.primary,
+  },
+
+  infoBox: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: Colors.accentLight,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  infoBoxTextWrap: {
+    flex: 1,
+  },
+  infoBoxTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: 3,
+  },
+  infoBoxText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
 
   disclaimer: {

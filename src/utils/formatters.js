@@ -25,6 +25,15 @@ export const formatEUR = (value, decimals = 2) => {
   })}`;
 };
 
+export const formatGBP = (value, decimals = 2) => {
+  if (value === null || value === undefined || isNaN(value)) return '£0.00';
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  return `£${Number(value).toLocaleString('en-GB', {
+    minimumFractionDigits: safeDecimals,
+    maximumFractionDigits: safeDecimals,
+  })}`;
+};
+
 export const formatPercent = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '0.00%';
   const sign = value >= 0 ? '+' : '';

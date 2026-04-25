@@ -1,22 +1,26 @@
 import { TROY_OZ_TO_GRAM } from '../utils/assets';
 
-// Backend base URL — OpenExchangeRates (döviz+metaller) ve CoinMarketCap
-// (kripto) verilerini saatte bir / 5 dakikada bir çekerek DB'de saklar.
+// Backend base URL - OpenExchangeRates (forex + metals) and CoinMarketCap
+// (crypto) data are fetched by the backend and stored in the DB.
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://project1-be-1.onrender.com';
 
 function transformResponse(json) {
   const ratesData = json.rates?.data || {};
 
-  const usdTry  = ratesData.TRY  ?? null;
-  const eurRaw  = ratesData.EUR  ?? null; // 1 USD = eurRaw EUR
-  const eurUsd  = eurRaw  ? 1 / eurRaw  : null;
-  const eurTry  = (usdTry != null && eurRaw != null) ? usdTry / eurRaw : null;
+  const usdTry = ratesData.TRY ?? null;
+  const usdEur = ratesData.EUR ?? null; // 1 USD = x EUR
+  const usdGbp = ratesData.GBP ?? null; // 1 USD = x GBP
+  const eurUsd = usdEur ? 1 / usdEur : null;
+  const gbpUsd = usdGbp ? 1 / usdGbp : null;
+  const eurTry = usdTry != null && usdEur != null ? usdTry / usdEur : null;
+  const gbpTry = usdTry != null && usdGbp != null ? usdTry / usdGbp : null;
+  const eurGbp = usdGbp != null && usdEur != null ? usdGbp / usdEur : null;
 
-  const xauRaw      = ratesData.XAU ?? null; // 1 USD = xauRaw troy oz gold
-  const xagRaw      = ratesData.XAG ?? null;
-  const goldOzUSD   = xauRaw ? 1 / xauRaw : null;
+  const xauRaw = ratesData.XAU ?? null; // 1 USD = x troy oz gold
+  const xagRaw = ratesData.XAG ?? null;
+  const goldOzUSD = xauRaw ? 1 / xauRaw : null;
   const silverOzUSD = xagRaw ? 1 / xagRaw : null;
-  const goldGramUSD   = goldOzUSD   != null ? goldOzUSD   / TROY_OZ_TO_GRAM : null;
+  const goldGramUSD = goldOzUSD != null ? goldOzUSD / TROY_OZ_TO_GRAM : null;
   const silverGramUSD = silverOzUSD != null ? silverOzUSD / TROY_OZ_TO_GRAM : null;
 
   const crypto = {};
@@ -31,17 +35,17 @@ function transformResponse(json) {
   });
 
   return {
-    forex: { usdTry, eurUsd, eurTry },
+    forex: { usdTry, usdEur, eurUsd, eurTry, usdGbp, gbpUsd, gbpTry, eurGbp },
     metals: {
       goldOzUSD,
       silverOzUSD,
       goldGramUSD,
       silverGramUSD,
-      goldGramTRY:   (goldGramUSD   != null && usdTry != null) ? goldGramUSD   * usdTry : null,
-      silverGramTRY: (silverGramUSD != null && usdTry != null) ? silverGramUSD * usdTry : null,
+      goldGramTRY: goldGramUSD != null && usdTry != null ? goldGramUSD * usdTry : null,
+      silverGramTRY: silverGramUSD != null && usdTry != null ? silverGramUSD * usdTry : null,
     },
     crypto,
-    ratesUpdatedAt:  json.rates?.fetchedAt  ?? null,
+    ratesUpdatedAt: json.rates?.fetchedAt ?? null,
     cryptoUpdatedAt: json.crypto?.fetchedAt ?? null,
     lastUpdated: new Date().toISOString(),
   };
@@ -57,19 +61,20 @@ export const MarketAPI = {
     return transformResponse(json);
   },
 
-  // ── Yardımcı: Varlık güncel USD fiyatı ───────────────────────────────────
   getAssetCurrentPrice(assetId, prices) {
     if (!prices) return null;
     const mapping = {
-      'gold-gram':   prices.metals?.goldGramUSD,
+      'gold-gram': prices.metals?.goldGramUSD,
       'silver-gram': prices.metals?.silverGramUSD,
-      'gold-oz':     prices.metals?.goldOzUSD,
-      'silver-oz':   prices.metals?.silverOzUSD,
-      btc:           prices.crypto?.btc?.usd,
-      bnb:           prices.crypto?.bnb?.usd,
-      xrp:           prices.crypto?.xrp?.usd,
-      usd:           1,
-      eur:           prices.forex?.eurUsd,
+      'gold-oz': prices.metals?.goldOzUSD,
+      'silver-oz': prices.metals?.silverOzUSD,
+      btc: prices.crypto?.btc?.usd,
+      eth: prices.crypto?.eth?.usd,
+      bnb: prices.crypto?.bnb?.usd,
+      xrp: prices.crypto?.xrp?.usd,
+      usd: 1,
+      eur: prices.forex?.eurUsd,
+      gbp: prices.forex?.gbpUsd,
     };
     return mapping[assetId] ?? null;
   },

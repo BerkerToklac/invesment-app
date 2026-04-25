@@ -26,7 +26,7 @@ import { PREDEFINED_ASSETS, getLocalizedAssetName } from '../utils/assets';
 import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
 import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
 
-const HOME_ASSET_IDS = ['usd', 'eur', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'bnb', 'xrp'];
+const HOME_ASSET_IDS = ['usd', 'eur', 'gbp', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
 
 function sanitizeTwoDecimalInput(value) {
   const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');

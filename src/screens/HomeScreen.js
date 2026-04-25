@@ -17,7 +17,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
-import { convertUSDToCurrency, formatCurrency, getEurUsd, getUsdTry } from '../utils/currency';
+import { convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
 
 function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, iconBg }) {
   const isPositive = change >= 0;
@@ -51,6 +51,11 @@ function RateCard({ label, subLabel, value, subValue, change, icon, iconColor, i
   );
 }
 
+function formatDisplayValue(value, formatter, decimals = 2) {
+  if (value === null || value === undefined) return '-';
+  return formatter(value, decimals);
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
@@ -65,10 +70,12 @@ export default function HomeScreen() {
       'gold-oz': prices.metals?.goldOzUSD,
       'silver-oz': prices.metals?.silverOzUSD,
       btc: prices.crypto?.btc?.usd,
+      eth: prices.crypto?.eth?.usd,
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
       usd: 1,
       eur: prices.forex?.eurUsd,
+      gbp: prices.forex?.gbpUsd,
     };
     return map[id] ?? null;
   };
@@ -78,15 +85,15 @@ export default function HomeScreen() {
     return computeStats(getAssetPrice);
   }, [prices, computeStats]);
 
-  const usdTry = getUsdTry(prices);
   const eurUsd = getEurUsd(prices);
-  const eurTry = prices?.forex?.eurTry;
+  const gbpUsd = getGbpUsd(prices);
   const goldGramUSD = prices?.metals?.goldGramUSD;
   const silverGramUSD = prices?.metals?.silverGramUSD;
   const goldOzUSD = prices?.metals?.goldOzUSD;
   const silverOzUSD = prices?.metals?.silverOzUSD;
 
   const btcChange = prices?.crypto?.btc?.change24h;
+  const ethChange = prices?.crypto?.eth?.change24h;
   const bnbChange = prices?.crypto?.bnb?.change24h;
   const xrpChange = prices?.crypto?.xrp?.change24h;
 
@@ -100,17 +107,37 @@ export default function HomeScreen() {
   const plPct = portfolioStats?.totalPLPercent || 0;
 
   const localSub = (usdValue, decimals = 2) =>
-    formatCurrency(convertUSDToCurrency(usdValue, localCurrency, prices), localCurrency, decimals);
+    usdValue == null ? '-' : formatCurrency(convertUSDToCurrency(usdValue, localCurrency, prices), localCurrency, decimals);
 
-  const dollarRateValue = localCurrency === 'EUR'
-    ? formatCurrency(convertUSDToCurrency(1, 'EUR', prices), 'EUR', 4)
-    : formatCurrency(usdTry, 'TRY', 4);
+  const formatForexCard = (assetCode, usdPrice) => {
+    const upperCode = assetCode.toUpperCase();
 
-  const euroRateValue = localCurrency === 'EUR'
-    ? formatUSD(eurUsd, 4)
-    : formatCurrency(eurTry, 'TRY', 4);
+    if (usdPrice == null) {
+      return { value: '--', subValue: null, subLabel: `${upperCode} / ${localCurrency}` };
+    }
 
-  const euroRateSub = localCurrency === 'EUR' ? '1 EUR' : formatUSD(eurUsd, 4);
+    if (localCurrency === upperCode) {
+      return {
+        value: formatUSD(usdPrice, 4),
+        subValue: `1 ${upperCode}`,
+        subLabel: `${upperCode} / USD`,
+      };
+    }
+
+    return {
+      value: formatCurrency(convertUSDToCurrency(usdPrice, localCurrency, prices), localCurrency, 4),
+      subValue: formatUSD(usdPrice, 4),
+      subLabel: `${upperCode} / ${localCurrency}`,
+    };
+  };
+
+  const dollarRate = {
+    value: formatCurrency(convertUSDToCurrency(1, localCurrency, prices), localCurrency, 4),
+    subValue: '1 USD',
+    subLabel: `USD / ${localCurrency}`,
+  };
+  const euroRate = formatForexCard('eur', eurUsd);
+  const poundRate = formatForexCard('gbp', gbpUsd);
 
   return (
     <View style={styles.root}>
@@ -184,21 +211,30 @@ export default function HomeScreen() {
           <>
             <RateCard
               label={t('dollar')}
-              subLabel={localCurrency === 'EUR' ? 'USD / EUR' : 'USD / TRY'}
-              value={dollarRateValue}
-              subValue="1 USD"
+              subLabel={dollarRate.subLabel}
+              value={dollarRate.value}
+              subValue={dollarRate.subValue}
               icon="cash-outline"
               iconColor="#16A34A"
               iconBg="#DCFCE7"
             />
             <RateCard
               label={t('euro')}
-              subLabel={localCurrency === 'EUR' ? 'EUR / USD' : 'EUR / TRY'}
-              value={euroRateValue}
-              subValue={euroRateSub}
+              subLabel={euroRate.subLabel}
+              value={euroRate.value}
+              subValue={euroRate.subValue}
               icon="logo-euro"
               iconColor={Colors.primary}
               iconBg={Colors.accentLight}
+            />
+            <RateCard
+              label={t('pound')}
+              subLabel={poundRate.subLabel}
+              value={poundRate.value}
+              subValue={poundRate.subValue}
+              icon="cash-outline"
+              iconColor="#0F766E"
+              iconBg="#CCFBF1"
             />
 
             <View style={styles.sectionHeader}>
@@ -208,25 +244,25 @@ export default function HomeScreen() {
             <RateCard
               label={t('gram_gold')}
               subLabel="995/1000"
-              value={formatUSD(goldGramUSD, 2)}
+              value={formatDisplayValue(goldGramUSD, formatUSD, 2)}
               subValue={localSub(goldGramUSD, 2)}
-              icon="diamond-outline"
+              icon="medal-outline"
               iconColor={Colors.gold}
               iconBg={Colors.warningLight}
             />
             <RateCard
               label={t('gram_silver')}
               subLabel="995/1000"
-              value={formatUSD(silverGramUSD, 4)}
+              value={formatDisplayValue(silverGramUSD, formatUSD, 4)}
               subValue={localSub(silverGramUSD, 2)}
-              icon="sparkles-outline"
+              icon="medal-outline"
               iconColor={Colors.silver}
               iconBg={Colors.borderLight}
             />
             <RateCard
               label={t('ounce_gold')}
               subLabel="Troy oz / USD"
-              value={formatUSD(goldOzUSD, 2)}
+              value={formatDisplayValue(goldOzUSD, formatUSD, 2)}
               subValue={localSub(goldOzUSD, 2)}
               icon="medal-outline"
               iconColor={Colors.gold}
@@ -235,9 +271,9 @@ export default function HomeScreen() {
             <RateCard
               label={t('ounce_silver')}
               subLabel="Troy oz / USD"
-              value={formatUSD(silverOzUSD, 2)}
+              value={formatDisplayValue(silverOzUSD, formatUSD, 2)}
               subValue={localSub(silverOzUSD, 2)}
-              icon="ellipse-outline"
+              icon="medal-outline"
               iconColor={Colors.silver}
               iconBg={Colors.borderLight}
             />
@@ -246,42 +282,46 @@ export default function HomeScreen() {
               <Text style={styles.sectionTitle}>{t('crypto')}</Text>
             </View>
 
-            {prices?.crypto?.btc && (
-              <RateCard
-                label={t('bitcoin')}
-                subLabel="BTC / USD"
-                value={formatUSD(prices.crypto.btc.usd)}
-                subValue={localSub(prices.crypto.btc.usd, 2)}
-                change={btcChange}
-                icon="logo-bitcoin"
-                iconColor="#F7931A"
-                iconBg="#FEF3C7"
-              />
-            )}
-            {prices?.crypto?.bnb && (
-              <RateCard
-                label="BNB"
-                subLabel="BNB / USD"
-                value={formatUSD(prices.crypto.bnb.usd)}
-                subValue={localSub(prices.crypto.bnb.usd, 2)}
-                change={bnbChange}
-                icon="cube-outline"
-                iconColor="#F0B90B"
-                iconBg="#FEF3C7"
-              />
-            )}
-            {prices?.crypto?.xrp && (
-              <RateCard
-                label={t('ripple')}
-                subLabel="XRP / USD"
-                value={formatUSD(prices.crypto.xrp.usd, 4)}
-                subValue={localSub(prices.crypto.xrp.usd, 4)}
-                change={xrpChange}
-                icon="water-outline"
-                iconColor="#00AAE4"
-                iconBg={Colors.accentLight}
-              />
-            )}
+            <RateCard
+              label={t('bitcoin')}
+              subLabel="BTC / USD"
+              value={formatDisplayValue(prices?.crypto?.btc?.usd, formatUSD)}
+              subValue={localSub(prices?.crypto?.btc?.usd, 2)}
+              change={btcChange}
+              icon="logo-bitcoin"
+              iconColor="#F7931A"
+              iconBg="#FEF3C7"
+            />
+            <RateCard
+              label="Ethereum"
+              subLabel="ETH / USD"
+              value={formatDisplayValue(prices?.crypto?.eth?.usd, formatUSD)}
+              subValue={localSub(prices?.crypto?.eth?.usd, 2)}
+              change={ethChange}
+              icon="logo-bitcoin"
+              iconColor="#627EEA"
+              iconBg="#E0E7FF"
+            />
+            <RateCard
+              label="BNB"
+              subLabel="BNB / USD"
+              value={formatDisplayValue(prices?.crypto?.bnb?.usd, formatUSD)}
+              subValue={localSub(prices?.crypto?.bnb?.usd, 2)}
+              change={bnbChange}
+              icon="cube-outline"
+              iconColor="#F0B90B"
+              iconBg="#FEF3C7"
+            />
+            <RateCard
+              label={t('ripple')}
+              subLabel="XRP / USD"
+              value={formatDisplayValue(prices?.crypto?.xrp?.usd, formatUSD, 4)}
+              subValue={localSub(prices?.crypto?.xrp?.usd, 4)}
+              change={xrpChange}
+              icon="water-outline"
+              iconColor="#00AAE4"
+              iconBg={Colors.accentLight}
+            />
           </>
         )}
       </ScrollView>

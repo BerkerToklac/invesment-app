@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
+import { LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
 
 const appVersion = appConfig?.expo?.version || 'Unknown';
 
@@ -213,7 +214,7 @@ export default function SettingsScreen() {
             sub={t('local_currency_sub')}
           />
           <View style={styles.currencySelector}>
-            {['TRY', 'EUR', 'USD'].map((currency) => (
+            {LOCAL_CURRENCY_OPTIONS.map((currency) => (
               <TouchableOpacity
                 key={currency}
                 style={[styles.currencyOption, localCurrency === currency && styles.currencyOptionActive]}

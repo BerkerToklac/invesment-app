@@ -144,6 +144,16 @@ export const PREDEFINED_ASSETS = [
     emoji: '🇪🇺',
   },
   {
+    id: 'gbp',
+    name: 'Sterlin',
+    shortName: 'GBP',
+    type: 'forex',
+    unit: 'GBP',
+    coinGeckoId: null,
+    color: '#0F766E',
+    emoji: '🇬🇧',
+  },
+  {
     id: 'custom',
     name: 'Diğer',
     shortName: 'Özel',
@@ -165,6 +175,7 @@ export const getLocalizedAssetName = (assetId, language = 'tr') => {
   const names = {
     usd: { tr: 'Dolar', en: 'Dollar' },
     eur: { tr: 'Euro', en: 'Euro' },
+    gbp: { tr: 'Sterlin', en: 'Pound Sterling' },
     'gold-gram': { tr: 'Gram Altın', en: 'Gram Gold' },
     'silver-gram': { tr: 'Gram Gümüş', en: 'Gram Silver' },
     'gold-oz': { tr: 'Ons Altın', en: 'Gold Ounce' },

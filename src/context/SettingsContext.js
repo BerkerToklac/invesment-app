@@ -45,7 +45,7 @@ export const SettingsProvider = ({ children }) => {
   }, [settings]);
 
   const setLocalCurrency = useCallback(async (currency) => {
-    if (!['TRY', 'EUR', 'USD'].includes(currency)) return settings;
+    if (!['TRY', 'EUR', 'GBP', 'USD'].includes(currency)) return settings;
     return updateSettings({ localCurrency: currency });
   }, [settings, updateSettings]);
 

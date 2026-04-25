@@ -18,7 +18,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent, formatCrypto, formatDate } from '../utils/formatters';
-import { convertUSDToCurrency, formatCurrency, getUsdTry, getEurUsd } from '../utils/currency';
+import { convertUSDToCurrency, formatCurrency, getLocalPerUsd } from '../utils/currency';
 
 function DonutChart({ data, total, size = 180, emptyLabel = '-', totalLabel = 'Total' }) {
   const radius = size / 2 - 20;
@@ -199,6 +199,7 @@ export default function PortfolioScreen({ navigation }) {
       xaut: prices.crypto?.['tether-gold']?.usd,
       usd: 1,
       eur: prices.forex?.eurUsd,
+      gbp: prices.forex?.gbpUsd,
     };
     return map[id] ?? null;
   };
@@ -236,14 +237,7 @@ export default function PortfolioScreen({ navigation }) {
       .sort((a, b) => b.totalUSD - a.totalUSD);
   }, [grouped, localCurrency, prices, t, totalCurrentUSD]);
   const isPositive = totalPLUSD >= 0;
-  const currentLocalPerUsd = useMemo(() => {
-    if (localCurrency === 'TRY') return getUsdTry(prices);
-    if (localCurrency === 'EUR') {
-      const eurUsd = getEurUsd(prices);
-      return eurUsd != null ? (1 / eurUsd) : null;
-    }
-    return 1;
-  }, [localCurrency, prices]);
+  const currentLocalPerUsd = useMemo(() => getLocalPerUsd(localCurrency, prices), [localCurrency, prices]);
 
   if (holdings.length === 0) {
     return (

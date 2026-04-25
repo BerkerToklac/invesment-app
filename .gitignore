@@ -10,6 +10,3 @@ npm-debug.*
 *.orig.*
 web-build/
 .DS_Store
-*.env
-.env.local
-.env.production

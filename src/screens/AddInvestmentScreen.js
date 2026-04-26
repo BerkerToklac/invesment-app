@@ -203,6 +203,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const isUsdAsset = selectedAsset?.id === 'usd';
   const isBaseCurrencyAsset = selectedAsset?.id === activeBaseAssetId;
+  const shouldCaptureLocalCost = isBaseCurrencyAsset || isUsdAsset;
   const baseAssetManualRateInfo = language === 'en'
     ? `For the ${baseCurrency} base asset, the purchase rate is entered manually in the local currency.`
     : `${baseCurrency} bazli varlikta alis kuru yerel para birimi uzerinden manuel girilir.`;
@@ -214,6 +215,7 @@ export default function AddInvestmentScreen({ navigation }) {
     () => getLocalCurrencyOptions(localCurrency, baseCurrency),
     [baseCurrency, localCurrency]
   );
+  const buyPriceCurrency = isBaseCurrencyAsset ? localCurrency : priceCurrency;
 
   const pickerAssets = useMemo(
     () =>
@@ -252,16 +254,21 @@ export default function AddInvestmentScreen({ navigation }) {
   const buyPriceNumber = isBaseCurrencyAsset
     ? (localCurrency === baseCurrency ? 1 : (parseFloat(buyPrice) || 0))
     : (parseFloat(buyPrice) || 0);
-  const buyPriceUSD = isUsdAsset
+  const buyPriceUSD = isBaseCurrencyAsset
+    ? (currentMarketPriceUSD ?? convertCurrencyToUSD(buyPriceNumber, localCurrency, prices))
+    : isUsdAsset
     ? 1
     : convertCurrencyToUSD(
       buyPriceNumber,
-      isBaseCurrencyAsset ? localCurrency : priceCurrency,
+      priceCurrency,
       prices
     );
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
-  const totalCostLocal = convertUSDToCurrency(totalCostUSD, localCurrency, prices);
+  const enteredTotalCost = amountNumber * buyPriceNumber;
+  const totalCostLocal = shouldCaptureLocalCost && buyPriceCurrency === localCurrency
+    ? enteredTotalCost
+    : convertUSDToCurrency(totalCostUSD, localCurrency, prices);
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
 
@@ -295,8 +302,8 @@ export default function AddInvestmentScreen({ navigation }) {
       let buyFxLocalPerUSD = null;
       let buyLocalTotal = null;
 
-      if (isBaseCurrencyAsset) {
-        buyLocalCurrency = localCurrency;
+      if (shouldCaptureLocalCost) {
+        buyLocalCurrency = isBaseCurrencyAsset ? localCurrency : priceCurrency;
         buyFxLocalPerUSD = buyPriceNumber;
 
         if (buyFxLocalPerUSD == null) {
@@ -451,7 +458,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
                 <View style={styles.inputWithSuffix}>
                   <View style={styles.inputPrefix}>
-                    <Text style={styles.inputPrefixText}>{getCurrencySymbol(priceCurrency)}</Text>
+                    <Text style={styles.inputPrefixText}>{getCurrencySymbol(buyPriceCurrency)}</Text>
                   </View>
                   <TextInput
                     style={[styles.input, styles.borderlessInput, styles.noLeftRadius]}

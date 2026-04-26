@@ -18,7 +18,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatPercent, formatCrypto, formatDate } from '../utils/formatters';
-import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency } from '../utils/currency';
 
 function DonutChart({ data, total, totalFormatted, size = 180, emptyLabel = '-', totalLabel = 'Total' }) {
   const radius = size / 2 - 20;
@@ -120,6 +120,13 @@ function getHoldingCostBaseValue(holding, {
   prices,
 }) {
   if (
+    holding.buyLocalCurrency === baseCurrency &&
+    holding.buyLocalTotal != null
+  ) {
+    return holding.buyLocalTotal;
+  }
+
+  if (
     holding.assetId === activeBaseAssetId &&
     holding.buyLocalTotal != null
   ) {
@@ -132,6 +139,13 @@ function getHoldingCostBaseValue(holding, {
     }
   }
 
+  if (holding.buyLocalCurrency && holding.buyLocalTotal != null) {
+    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
+    if (costUSDFromLocal != null) {
+      return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
+    }
+  }
+
   return convertUSDToCurrency(holding.costUSD || 0, baseCurrency, prices);
 }
 
@@ -141,7 +155,6 @@ function getHoldingCostLocalValue(holding, {
   prices,
 }) {
   if (
-    holding.assetId === activeBaseAssetId &&
     holding.buyLocalCurrency === localCurrency &&
     holding.buyLocalTotal != null
   ) {
@@ -165,10 +178,11 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
   const plPct = costBase > 0 ? (plBase / costBase) * 100 : 0;
   const isUp = plBase >= 0;
   const currentLocal = convertUSDToCurrency(holding.currentUSD || 0, localCurrency, prices);
-  const costLocal =
-    holding.assetId === activeBaseAssetId && holding.buyLocalCurrency === localCurrency && holding.buyLocalTotal != null
-      ? holding.buyLocalTotal
-      : convertUSDToCurrency(holding.costUSD || 0, localCurrency, prices);
+  const costLocal = getHoldingCostLocalValue(holding, {
+    activeBaseAssetId,
+    localCurrency,
+    prices,
+  });
   const buyLabel =
     holding.assetId === activeBaseAssetId && holding.buyLocalCurrency && holding.buyFxLocalPerUSD != null
       ? `${t('buy_rate_label')}: 1 ${baseCurrency} = ${formatCurrency(holding.buyFxLocalPerUSD, holding.buyLocalCurrency)}`
@@ -234,14 +248,14 @@ export default function PortfolioScreen({ navigation }) {
       'silver-gram': prices.metals?.silverGramUSD,
       'gold-oz': prices.metals?.goldOzUSD,
       'silver-oz': prices.metals?.silverOzUSD,
-      btc: prices.crypto?.bitcoin?.usd,
-      eth: prices.crypto?.ethereum?.usd,
-      bnb: prices.crypto?.binancecoin?.usd,
-      xrp: prices.crypto?.ripple?.usd,
-      sol: prices.crypto?.solana?.usd,
-      usdt: prices.crypto?.tether?.usd,
-      paxg: prices.crypto?.['pax-gold']?.usd,
-      xaut: prices.crypto?.['tether-gold']?.usd,
+      btc: prices.crypto?.btc?.usd,
+      eth: prices.crypto?.eth?.usd,
+      bnb: prices.crypto?.bnb?.usd,
+      xrp: prices.crypto?.xrp?.usd,
+      sol: prices.crypto?.sol?.usd,
+      usdt: prices.crypto?.usdt?.usd,
+      paxg: prices.crypto?.paxg?.usd,
+      xaut: prices.crypto?.xaut?.usd,
       usd: 1,
       eur: prices.forex?.eurUsd,
       gbp: prices.forex?.gbpUsd,
@@ -473,10 +487,6 @@ export default function PortfolioScreen({ navigation }) {
           <>
             {grouped.map((g) => {
               const groupRows = enrichedHoldings.filter((h) => h.assetId === g.assetId);
-              const baseRowsForLocal = g.assetId === activeBaseAssetId
-                ? enrichedHoldings.filter((h) => h.assetId === activeBaseAssetId && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null)
-                : [];
-              const groupAvgBuyBase = convertUSDToCurrency(g.avgBuyPrice, baseCurrency, prices);
               const groupCostBaseValue = groupRows.reduce(
                 (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
                   activeBaseAssetId,
@@ -485,14 +495,20 @@ export default function PortfolioScreen({ navigation }) {
                 }) || 0),
                 0
               );
+              const groupAvgBuyBase = g.totalAmount > 0 ? groupCostBaseValue / g.totalAmount : 0;
               const groupCurrentBaseValue = convertUSDToCurrency(g.totalCurrentUSD, baseCurrency, prices);
               const groupPlBase = groupCurrentBaseValue - groupCostBaseValue;
               const groupPlPercentBase = groupCostBaseValue > 0 ? (groupPlBase / groupCostBaseValue) * 100 : 0;
               const groupUp = groupPlBase >= 0;
-              const groupCostLocalValue = baseRowsForLocal.length > 0
-                ? baseRowsForLocal.reduce((sum, row) => sum + (row.buyLocalTotal || 0), 0)
-                : convertUSDToCurrency(g.totalCostUSD, localCurrency, prices);
-                const groupCurrentLocalValue = convertUSDToCurrency(g.totalCurrentUSD, localCurrency, prices);
+              const groupCostLocalValue = groupRows.reduce(
+                (sum, holding) => sum + (getHoldingCostLocalValue(holding, {
+                  activeBaseAssetId,
+                  localCurrency,
+                  prices,
+                }) || 0),
+                0
+              );
+              const groupCurrentLocalValue = convertUSDToCurrency(g.totalCurrentUSD, localCurrency, prices);
 
               return (
                 <View key={g.assetId} style={styles.groupCard}>
@@ -512,6 +528,7 @@ export default function PortfolioScreen({ navigation }) {
                         {formatCurrency(groupCostLocalValue, localCurrency)}
                       </Text>
                       {g.assetId === activeBaseAssetId ? (() => {
+                        const baseRowsForLocal = groupRows.filter((h) => h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null);
                         if (baseRowsForLocal.length === 0) return null;
 
                         const groupBuyLocalTotal = baseRowsForLocal.reduce((sum, row) => sum + (row.buyLocalTotal || 0), 0);
@@ -548,10 +565,11 @@ export default function PortfolioScreen({ navigation }) {
                           baseCurrency,
                           prices,
                         });
-                        const transactionCostLocal =
-                          h.assetId === activeBaseAssetId && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null
-                            ? h.buyLocalTotal
-                            : convertUSDToCurrency(h.costUSD || 0, localCurrency, prices);
+                        const transactionCostLocal = getHoldingCostLocalValue(h, {
+                          activeBaseAssetId,
+                          localCurrency,
+                          prices,
+                        });
 
                         return (
                           <>

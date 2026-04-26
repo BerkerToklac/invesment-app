@@ -50,7 +50,7 @@ function SectionHeader({ title }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, clearPortfolio, deleteBaseCurrencyHoldings } = usePortfolio();
+  const { holdings, clearPortfolio, deleteBaseAssetHoldings } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
   const { localCurrency, setLocalCurrency, baseCurrency, setCurrencyPreferences, language, setLanguage, t } = useSettings();
 
@@ -115,8 +115,9 @@ export default function SettingsScreen() {
   const handleLocalCurrencyChange = (nextCurrency) => {
     if (nextCurrency === localCurrency) return;
 
-    const hasBaseCurrencyHoldings = holdings.some((h) => (h.baseCurrency || 'USD') === baseCurrency);
-    if (!hasBaseCurrencyHoldings) {
+    const baseAssetId = (baseCurrency || 'USD').toLowerCase();
+    const hasBaseAssetHoldings = holdings.some((h) => (h.assetId || '').toLowerCase() === baseAssetId);
+    if (!hasBaseAssetHoldings) {
       setLocalCurrency(nextCurrency);
       return;
     }
@@ -131,7 +132,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteBaseCurrencyHoldings(baseCurrency);
+              await deleteBaseAssetHoldings(baseCurrency);
               await setLocalCurrency(nextCurrency);
               Alert.alert(t('success'), interpolate('local_currency_changed_with_base_deleted', { baseCurrency }));
             } catch (err) {
@@ -262,7 +263,9 @@ export default function SettingsScreen() {
           />
           <View style={styles.currencyDetailBox}>
             <Text style={styles.currencyDetailText}>{t('local_currency_details')}</Text>
-            <Text style={styles.currencyDetailWarning}>{t('local_currency_details_warning')}</Text>
+            <Text style={styles.currencyDetailWarning}>
+              {interpolate('local_currency_details_warning', { baseCurrency })}
+            </Text>
           </View>
           <View style={styles.currencySelector}>
             {LOCAL_CURRENCY_OPTIONS.map((currency) => (

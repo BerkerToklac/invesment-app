@@ -76,6 +76,13 @@ export const PortfolioProvider = ({ children }) => {
     setHoldings((prev) => prev.filter((h) => (h.baseCurrency || 'USD') !== upperCurrency));
   };
 
+  const deleteBaseAssetHoldings = async (currency) => {
+    if (!user) throw new Error('Not authenticated');
+    const assetId = typeof currency === 'string' ? currency.trim().toLowerCase() : '';
+    await apiClient.delete(`/investment/portfolio/base-asset/${assetId.toUpperCase()}`);
+    setHoldings((prev) => prev.filter((h) => (h.assetId || '').toLowerCase() !== assetId));
+  };
+
   const clearPortfolio = async () => {
     if (!user) throw new Error('Not authenticated');
     await apiClient.delete('/investment/portfolio/all');
@@ -168,6 +175,7 @@ export const PortfolioProvider = ({ children }) => {
         deleteHolding,
         deleteUsdHoldings,
         deleteBaseCurrencyHoldings,
+        deleteBaseAssetHoldings,
         clearPortfolio,
         computeStats,
         getGroupedHoldings,

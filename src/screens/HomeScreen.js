@@ -64,6 +64,11 @@ function getHoldingCostBaseValue(holding, {
   baseCurrency,
   prices,
 }) {
+  const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
+  if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
+    return snapshotBaseCost;
+  }
+
   if (
     holding.buyLocalCurrency === baseCurrency &&
     holding.buyLocalTotal != null

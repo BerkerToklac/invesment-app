@@ -27,6 +27,7 @@ import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatter
 import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
 
 const HOME_ASSET_IDS = ['usd', 'eur', 'gbp', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
+const SNAPSHOT_CURRENCIES = ['TRY', 'EUR', 'GBP', 'USD'];
 
 function sanitizeTwoDecimalInput(value) {
   const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');
@@ -187,6 +188,22 @@ function FormRow({ label, children }) {
   );
 }
 
+function convertCurrencyToCurrency(value, fromCurrency, toCurrency, prices) {
+  if (fromCurrency === toCurrency) return Number(value) || 0;
+  const usdValue = convertCurrencyToUSD(value, fromCurrency, prices);
+  return usdValue != null ? convertUSDToCurrency(usdValue, toCurrency, prices) : null;
+}
+
+function buildCurrencyTotalsSnapshot(total, currency, prices) {
+  return SNAPSHOT_CURRENCIES.reduce((snapshot, targetCurrency) => {
+    const converted = convertCurrencyToCurrency(total, currency, targetCurrency, prices);
+    if (converted != null && Number.isFinite(converted)) {
+      snapshot[targetCurrency] = converted;
+    }
+    return snapshot;
+  }, {});
+}
+
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { addHolding } = usePortfolio();
@@ -266,9 +283,17 @@ export default function AddInvestmentScreen({ navigation }) {
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
   const enteredTotalCost = amountNumber * buyPriceNumber;
-  const totalCostLocal = shouldCaptureLocalCost && buyPriceCurrency === localCurrency
-    ? enteredTotalCost
+  const snapshotSourceCurrency = shouldCaptureLocalCost ? buyPriceCurrency : priceCurrency;
+  const snapshotSourceTotal = amountNumber * buyPriceNumber;
+  const buyCurrencyTotals = snapshotSourceTotal > 0
+    ? buildCurrencyTotalsSnapshot(snapshotSourceTotal, snapshotSourceCurrency, prices)
+    : null;
+  const totalCostLocal = shouldCaptureLocalCost
+    ? convertCurrencyToCurrency(enteredTotalCost, buyPriceCurrency, localCurrency, prices)
     : convertUSDToCurrency(totalCostUSD, localCurrency, prices);
+  const totalCostPreviewUSD = shouldCaptureLocalCost
+    ? convertCurrencyToUSD(enteredTotalCost, buyPriceCurrency, prices)
+    : totalCostUSD;
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
 
@@ -325,6 +350,8 @@ export default function AddInvestmentScreen({ navigation }) {
         amount: amountNumber,
         buyPriceUSD,
         baseCurrency,
+        buyPriceCurrency: snapshotSourceCurrency,
+        buyCurrencyTotals,
         buyLocalCurrency,
         buyFxLocalPerUSD,
         buyLocalTotal,
@@ -480,11 +507,11 @@ export default function AddInvestmentScreen({ navigation }) {
           ) : null}
 
           {selectedAsset ? <View style={styles.footerSection}>
-            {totalCostUSD > 0 && (
+            {totalCostPreviewUSD > 0 && (
               <View style={styles.totalPreview}>
                 <Text style={styles.totalPreviewLabel}>{t('total_cost')}</Text>
                 <Text style={styles.totalPreviewValue}>{formatCurrency(totalCostLocal, localCurrency, totalCostLocal < 1 ? 4 : 2)}</Text>
-                <Text style={styles.totalPreviewSub}>{t('usd_equivalent')}: {formatUSD(totalCostUSD)}</Text>
+                <Text style={styles.totalPreviewSub}>{t('usd_equivalent')}: {formatUSD(totalCostPreviewUSD)}</Text>
                 {currentMarketPriceUSD ? (
                   <>
                     <Text style={styles.totalPreviewSub}>

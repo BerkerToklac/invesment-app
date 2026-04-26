@@ -14,19 +14,19 @@ export default function AuthLanguageSelector() {
         <Ionicons name="language-outline" size={14} color="#FFFFFF" style={styles.icon} />
 
         <TouchableOpacity
-          style={[styles.option, language === 'tr' && styles.optionActive]}
-          onPress={() => setLanguage('tr')}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.optionText, language === 'tr' && styles.optionTextActive]}>TR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[styles.option, language === 'en' && styles.optionActive]}
           onPress={() => setLanguage('en')}
           activeOpacity={0.85}
         >
           <Text style={[styles.optionText, language === 'en' && styles.optionTextActive]}>EN</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.option, language === 'tr' && styles.optionActive]}
+          onPress={() => setLanguage('tr')}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.optionText, language === 'tr' && styles.optionTextActive]}>TR</Text>
         </TouchableOpacity>
       </View>
     </View>

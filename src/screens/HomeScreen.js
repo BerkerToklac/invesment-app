@@ -17,7 +17,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
+import { convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
 
 function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg }) {
   const isPositive = change >= 0;
@@ -62,16 +62,19 @@ function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel,
 function getHoldingCostBaseValue(holding, {
   activeBaseAssetId,
   baseCurrency,
-  localCurrency,
   prices,
 }) {
   if (
     holding.assetId === activeBaseAssetId &&
-    holding.buyLocalCurrency === localCurrency &&
     holding.buyLocalTotal != null
   ) {
-    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
-    return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
+    if (typeof holding.amount === 'number' && Number.isFinite(holding.amount)) {
+      return holding.amount;
+    }
+
+    if (typeof holding.buyFxLocalPerUSD === 'number' && holding.buyFxLocalPerUSD > 0) {
+      return holding.buyLocalTotal / holding.buyFxLocalPerUSD;
+    }
   }
 
   return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);
@@ -129,7 +132,6 @@ export default function HomeScreen() {
     (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
       activeBaseAssetId,
       baseCurrency,
-      localCurrency,
       prices,
     }) || 0),
     0

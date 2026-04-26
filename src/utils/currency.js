@@ -1,6 +1,6 @@
 import { formatEUR, formatGBP, formatTRY, formatUSD } from './formatters';
 
-export const LOCAL_CURRENCY_OPTIONS = ['TRY', 'EUR', 'GBP', 'USD'];
+export const LOCAL_CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'TRY'];
 
 export function getUsdTry(prices) {
   return prices?.forex?.usdTry ?? null;

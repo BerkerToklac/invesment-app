@@ -289,7 +289,7 @@ export default function SettingsScreen() {
             sub={t('language_sub')}
           />
           <View style={styles.currencySelector}>
-            {[{ key: 'tr', label: t('turkish') }, { key: 'en', label: t('english') }].map((item) => (
+            {[{ key: 'en', label: t('english') }, { key: 'tr', label: t('turkish') }].map((item) => (
               <TouchableOpacity
                 key={item.key}
                 style={[styles.currencyOption, language === item.key && styles.currencyOptionActive]}

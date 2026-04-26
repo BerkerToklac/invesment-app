@@ -17,8 +17,8 @@ import { Colors } from '../theme/colors';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
-import { formatUSD, formatPercent, formatCrypto, formatDate } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { formatPercent, formatCrypto, formatDate } from '../utils/formatters';
+import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
 
 function DonutChart({ data, total, totalFormatted, size = 180, emptyLabel = '-', totalLabel = 'Total' }) {
   const radius = size / 2 - 20;
@@ -117,6 +117,26 @@ function CategoryRow({ label, primaryValue, secondaryValue, percent, color, icon
 function getHoldingCostBaseValue(holding, {
   activeBaseAssetId,
   baseCurrency,
+  prices,
+}) {
+  if (
+    holding.assetId === activeBaseAssetId &&
+    holding.buyLocalTotal != null
+  ) {
+    if (typeof holding.amount === 'number' && Number.isFinite(holding.amount)) {
+      return holding.amount;
+    }
+
+    if (typeof holding.buyFxLocalPerUSD === 'number' && holding.buyFxLocalPerUSD > 0) {
+      return holding.buyLocalTotal / holding.buyFxLocalPerUSD;
+    }
+  }
+
+  return convertUSDToCurrency(holding.costUSD || 0, baseCurrency, prices);
+}
+
+function getHoldingCostLocalValue(holding, {
+  activeBaseAssetId,
   localCurrency,
   prices,
 }) {
@@ -125,11 +145,10 @@ function getHoldingCostBaseValue(holding, {
     holding.buyLocalCurrency === localCurrency &&
     holding.buyLocalTotal != null
   ) {
-    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
-    return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
+    return holding.buyLocalTotal;
   }
 
-  return convertUSDToCurrency(holding.costUSD || 0, baseCurrency, prices);
+  return convertUSDToCurrency(holding.costUSD || 0, localCurrency, prices);
 }
 
 function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) {
@@ -140,7 +159,6 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
   const costBase = getHoldingCostBaseValue(holding, {
     activeBaseAssetId,
     baseCurrency,
-    localCurrency,
     prices,
   });
   const plBase = currentBase - costBase;
@@ -233,13 +251,20 @@ export default function PortfolioScreen({ navigation }) {
 
   const stats = useMemo(() => computeStats(getAssetPrice), [prices, computeStats]);
   const grouped = useMemo(() => getGroupedHoldings(getAssetPrice), [prices, getGroupedHoldings]);
-  const { enrichedHoldings = [], totalCostUSD = 0, totalCurrentUSD = 0, totalPLUSD = 0, totalPLPercent = 0 } = stats || {};
+  const { enrichedHoldings = [], totalCurrentUSD = 0 } = stats || {};
 
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const totalCostBase = enrichedHoldings.reduce(
     (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
       activeBaseAssetId,
       baseCurrency,
+      prices,
+    }) || 0),
+    0
+  );
+  const totalCostLocal = enrichedHoldings.reduce(
+    (sum, holding) => sum + (getHoldingCostLocalValue(holding, {
+      activeBaseAssetId,
       localCurrency,
       prices,
     }) || 0),
@@ -350,7 +375,7 @@ export default function PortfolioScreen({ navigation }) {
           <StatCard
             label={t('cost')}
             value={formatCurrency(totalCostBase, baseCurrency)}
-            sub={formatCurrency(convertUSDToCurrency(totalCostUSD, localCurrency, prices), localCurrency)}
+            sub={formatCurrency(totalCostLocal, localCurrency)}
             icon="receipt-outline"
             iconColor={Colors.primary}
             iconBg={Colors.accentLight}
@@ -456,7 +481,6 @@ export default function PortfolioScreen({ navigation }) {
                 (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
                   activeBaseAssetId,
                   baseCurrency,
-                  localCurrency,
                   prices,
                 }) || 0),
                 0
@@ -519,10 +543,11 @@ export default function PortfolioScreen({ navigation }) {
                   {enrichedHoldings.filter((h) => h.assetId === g.assetId).map((h) => (
                     <View key={h.id} style={styles.subRow}>
                       {(() => {
-                        const transactionCostBase =
-                          h.assetId === activeBaseAssetId
-                            ? h.costUSD
-                            : convertUSDToCurrency(h.costUSD || 0, baseCurrency, prices);
+                        const transactionCostBase = getHoldingCostBaseValue(h, {
+                          activeBaseAssetId,
+                          baseCurrency,
+                          prices,
+                        });
                         const transactionCostLocal =
                           h.assetId === activeBaseAssetId && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null
                             ? h.buyLocalTotal

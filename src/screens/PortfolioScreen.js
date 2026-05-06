@@ -285,11 +285,13 @@ export default function PortfolioScreen({ navigation }) {
       usdt: prices.crypto?.usdt?.usd,
       paxg: prices.crypto?.paxg?.usd,
       xaut: prices.crypto?.xaut?.usd,
-      usd: 1,
-      eur: prices.forex?.eurUsd,
-      gbp: prices.forex?.gbpUsd,
     };
-    return map[id] ?? null;
+    if (map[id] != null) return map[id];
+
+    const currency = typeof id === 'string' ? id.toUpperCase() : '';
+    if (currency === 'USD') return 1;
+    const usdToCurrency = prices.forex?.rates?.[currency] ?? null;
+    return usdToCurrency ? 1 / usdToCurrency : null;
   };
 
   const stats = useMemo(() => computeStats(getAssetPrice), [prices, computeStats]);

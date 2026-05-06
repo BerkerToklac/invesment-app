@@ -19,14 +19,53 @@ import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import AuthLanguageSelector from '../components/AuthLanguageSelector';
 import { useSettings } from '../context/SettingsContext';
+import { CURRENCY_META, LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
+
+function CurrencyStrip({ title, value, onChange, language }) {
+  return (
+    <View style={styles.currencyBlock}>
+      <View style={styles.fieldLabelRow}>
+        <Ionicons name="cash-outline" size={15} color="rgba(255,255,255,0.6)" />
+        <Text style={styles.fieldLabel}>{title}</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.currencyStrip}
+      >
+        {LOCAL_CURRENCY_OPTIONS.map((currency) => {
+          const meta = CURRENCY_META[currency] || {};
+          const selected = value === currency;
+          return (
+            <TouchableOpacity
+              key={`${title}-${currency}`}
+              style={[styles.currencyChip, selected && styles.currencyChipActive]}
+              onPress={() => onChange(currency)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.currencyChipCode, selected && styles.currencyChipCodeActive]}>
+                {currency}
+              </Text>
+              <Text style={[styles.currencyChipName, selected && styles.currencyChipNameActive]} numberOfLines={1}>
+                {language === 'en' ? meta.name : meta.localName}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
 
 export default function OnboardingScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { user, updateProfile } = useAuth();
   const email = route?.params?.email || user?.email || '';
-  const { t } = useSettings();
+  const { baseCurrency, localCurrency, language, setCurrencyPreferences, t } = useSettings();
 
   const [name, setName]   = useState('');
+  const [selectedBaseCurrency, setSelectedBaseCurrency] = useState(baseCurrency || 'USD');
+  const [selectedLocalCurrency, setSelectedLocalCurrency] = useState(localCurrency || 'TRY');
   const [loading, setLoading] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
 
@@ -73,6 +112,10 @@ export default function OnboardingScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
+      await setCurrencyPreferences({
+        baseCurrency: selectedBaseCurrency,
+        localCurrency: selectedLocalCurrency,
+      });
       await updateProfile(name.trim());
     } catch (e) {
       Alert.alert(t('error'), t('onboarding_save_error'));
@@ -143,6 +186,25 @@ export default function OnboardingScreen({ route, navigation }) {
               <Text style={styles.previewDetail}>
                 {email}
               </Text>
+            </View>
+
+            <CurrencyStrip
+              title={t('base_currency')}
+              value={selectedBaseCurrency}
+              onChange={setSelectedBaseCurrency}
+              language={language}
+            />
+
+            <CurrencyStrip
+              title={t('local_currency')}
+              value={selectedLocalCurrency}
+              onChange={setSelectedLocalCurrency}
+              language={language}
+            />
+
+            <View style={styles.currencyNotice}>
+              <Ionicons name="information-circle-outline" size={15} color="rgba(255,255,255,0.78)" />
+              <Text style={styles.currencyNoticeText}>{t('onboarding_currency_notice')}</Text>
             </View>
           </Animated.View>
 
@@ -336,7 +398,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    gap: 0,
+    gap: 16,
   },
   fieldBlock: { gap: 8, paddingVertical: 4 },
   fieldLabelRow: {
@@ -370,6 +432,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: '500',
+  },
+  currencyBlock: { gap: 8 },
+  currencyStrip: { gap: 8, paddingRight: 6 },
+  currencyChip: {
+    width: 104,
+    minHeight: 58,
+    borderRadius: 14,
+    borderWidth: 1.3,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  currencyChipActive: {
+    borderColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  currencyChipCode: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  currencyChipCodeActive: { color: '#fff' },
+  currencyChipName: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 3,
+  },
+  currencyChipNameActive: { color: 'rgba(255,255,255,0.92)' },
+  currencyNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  currencyNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.78)',
+    lineHeight: 16,
+    fontWeight: '600',
   },
 
   // Gizlilik

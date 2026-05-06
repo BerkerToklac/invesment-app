@@ -63,26 +63,6 @@ export const PortfolioProvider = ({ children }) => {
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const deleteUsdHoldings = async () => {
-    if (!user) throw new Error('Not authenticated');
-    await apiClient.delete('/investment/portfolio/usd/all');
-    setHoldings((prev) => prev.filter((h) => h.assetId !== 'usd'));
-  };
-
-  const deleteBaseCurrencyHoldings = async (currency) => {
-    if (!user) throw new Error('Not authenticated');
-    const upperCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
-    await apiClient.delete(`/investment/portfolio/base/${upperCurrency}`);
-    setHoldings((prev) => prev.filter((h) => (h.baseCurrency || 'USD') !== upperCurrency));
-  };
-
-  const deleteBaseAssetHoldings = async (currency) => {
-    if (!user) throw new Error('Not authenticated');
-    const assetId = typeof currency === 'string' ? currency.trim().toLowerCase() : '';
-    await apiClient.delete(`/investment/portfolio/base-asset/${assetId.toUpperCase()}`);
-    setHoldings((prev) => prev.filter((h) => (h.assetId || '').toLowerCase() !== assetId));
-  };
-
   const clearPortfolio = async () => {
     if (!user) throw new Error('Not authenticated');
     await apiClient.delete('/investment/portfolio/all');
@@ -173,9 +153,6 @@ export const PortfolioProvider = ({ children }) => {
         addHolding,
         updateHolding,
         deleteHolding,
-        deleteUsdHoldings,
-        deleteBaseCurrencyHoldings,
-        deleteBaseAssetHoldings,
         clearPortfolio,
         computeStats,
         getGroupedHoldings,

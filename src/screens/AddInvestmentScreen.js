@@ -24,10 +24,18 @@ import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
 import { PREDEFINED_ASSETS, getLocalizedAssetName } from '../utils/assets';
 import { formatUSD, toIstanbulDateStr, formatDateLong } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getCurrencySymbol, getLocalCurrencyOptions } from '../utils/currency';
+import {
+  SUPPORTED_CURRENCIES,
+  convertCurrencyToUSD,
+  convertUSDToCurrency,
+  formatCurrency,
+  getCurrencySymbol,
+  getLocalCurrencyOptions,
+} from '../utils/currency';
 
-const HOME_ASSET_IDS = ['usd', 'eur', 'gbp', 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
-const SNAPSHOT_CURRENCIES = ['TRY', 'EUR', 'GBP', 'USD'];
+const FOREX_ASSET_IDS = SUPPORTED_CURRENCIES.map((currency) => currency.toLowerCase());
+const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
+const SNAPSHOT_CURRENCIES = SUPPORTED_CURRENCIES;
 
 function sanitizeTwoDecimalInput(value) {
   const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
-import { LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
+import { CURRENCY_META, LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
 
 const appVersion = appConfig?.expo?.version || 'Unknown';
 
@@ -47,17 +48,97 @@ function SectionHeader({ title }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
 }
 
+function CurrencyChoice({ currency, selected, language, onPress }) {
+  const meta = CURRENCY_META[currency] || {};
+  return (
+    <TouchableOpacity
+      style={[styles.currencyChoice, selected && styles.currencyChoiceActive]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <Text style={[styles.currencyChoiceCode, selected && styles.currencyChoiceCodeActive]}>{currency}</Text>
+      <Text style={[styles.currencyChoiceName, selected && styles.currencyChoiceNameActive]} numberOfLines={1}>
+        {language === 'en' ? meta.name : meta.localName}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function CurrencyPreferencesModal({
+  visible,
+  language,
+  baseCurrency,
+  localCurrency,
+  onBaseChange,
+  onLocalChange,
+  onCancel,
+  onSave,
+  t,
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.currencySheet}>
+          <View style={styles.currencySheetHandle} />
+          <View style={styles.currencySheetHeader}>
+            <TouchableOpacity onPress={onCancel} style={styles.sheetHeaderButton}>
+              <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.currencySheetTitle}>{t('currency_preferences')}</Text>
+            <TouchableOpacity onPress={onSave} style={styles.sheetHeaderButton}>
+              <Text style={styles.sheetSaveText}>{t('ok')}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.currencySheetInfo}>{t('currency_reset_notice')}</Text>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.currencySheetContent}>
+            <Text style={styles.currencySheetSection}>{t('base_currency')}</Text>
+            <View style={styles.currencyChoiceGrid}>
+              {LOCAL_CURRENCY_OPTIONS.map((currency) => (
+                <CurrencyChoice
+                  key={`base-${currency}`}
+                  currency={currency}
+                  selected={baseCurrency === currency}
+                  language={language}
+                  onPress={() => onBaseChange(currency)}
+                />
+              ))}
+            </View>
+
+            <Text style={styles.currencySheetSection}>{t('local_currency')}</Text>
+            <View style={styles.currencyChoiceGrid}>
+              {LOCAL_CURRENCY_OPTIONS.map((currency) => (
+                <CurrencyChoice
+                  key={`local-${currency}`}
+                  currency={currency}
+                  selected={localCurrency === currency}
+                  language={language}
+                  onPress={() => onLocalChange(currency)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, clearPortfolio, deleteBaseAssetHoldings } = usePortfolio();
+  const { holdings, clearPortfolio } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
-  const { localCurrency, setLocalCurrency, baseCurrency, setCurrencyPreferences, language, setLanguage, t } = useSettings();
+  const { localCurrency, baseCurrency, setCurrencyPreferences, language, setLanguage, t } = useSettings();
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [draftBaseCurrency, setDraftBaseCurrency] = useState(baseCurrency);
+  const [draftLocalCurrency, setDraftLocalCurrency] = useState(localCurrency);
 
-  const interpolate = (key, params = {}) =>
-    Object.entries(params).reduce((message, [paramKey, value]) => (
-      message.replace(new RegExp(`{{${paramKey}}}`, 'g'), String(value))
-    ), t(key));
+  const openCurrencyModal = () => {
+    setDraftBaseCurrency(baseCurrency);
+    setDraftLocalCurrency(localCurrency);
+    setCurrencyModalVisible(true);
+  };
 
   const handleLogout = () => {
     Alert.alert(t('logout_confirm_title'), t('logout_confirm_sub'), [
@@ -112,58 +193,38 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleLocalCurrencyChange = (nextCurrency) => {
-    if (nextCurrency === localCurrency) return;
+  const saveCurrencyPreferences = async () => {
+    const changed = draftBaseCurrency !== baseCurrency || draftLocalCurrency !== localCurrency;
+    if (!changed) {
+      setCurrencyModalVisible(false);
+      return;
+    }
 
-    const baseAssetId = (baseCurrency || 'USD').toLowerCase();
-    const hasBaseAssetHoldings = holdings.some((h) => (h.assetId || '').toLowerCase() === baseAssetId);
-    if (!hasBaseAssetHoldings) {
-      setLocalCurrency(nextCurrency);
+    const applyChange = async ({ resetPortfolio }) => {
+      try {
+        if (resetPortfolio) await clearPortfolio();
+        await setCurrencyPreferences({ baseCurrency: draftBaseCurrency, localCurrency: draftLocalCurrency });
+        setCurrencyModalVisible(false);
+        Alert.alert(t('success'), resetPortfolio ? t('currency_preferences_changed_reset') : t('currency_preferences_changed'));
+      } catch (err) {
+        Alert.alert(t('error'), t('operation_failed_retry'));
+      }
+    };
+
+    if (!holdings.length) {
+      await applyChange({ resetPortfolio: false });
       return;
     }
 
     Alert.alert(
-      t('local_currency_change_title'),
-      interpolate('local_currency_change_body_dynamic', { baseCurrency }),
+      t('currency_reset_confirm_title'),
+      t('currency_reset_confirm_body'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: t('local_currency_change_confirm'),
+          text: t('currency_reset_confirm_action'),
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteBaseAssetHoldings(baseCurrency);
-              await setLocalCurrency(nextCurrency);
-              Alert.alert(t('success'), interpolate('local_currency_changed_with_base_deleted', { baseCurrency }));
-            } catch (err) {
-              Alert.alert(t('error'), t('operation_failed_retry'));
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleBaseCurrencyChange = (nextCurrency) => {
-    if (nextCurrency === baseCurrency) return;
-
-    Alert.alert(
-      t('base_currency_change_title'),
-      t('base_currency_change_body'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        {
-          text: t('base_currency_change_confirm'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearPortfolio();
-              await setCurrencyPreferences({ baseCurrency: nextCurrency, localCurrency: nextCurrency });
-              Alert.alert(t('success'), t('base_currency_changed_and_portfolio_reset'));
-            } catch (err) {
-              Alert.alert(t('error'), t('operation_failed_retry'));
-            }
-          },
+          onPress: () => applyChange({ resetPortfolio: true }),
         },
       ]
     );
@@ -233,52 +294,13 @@ export default function SettingsScreen() {
             icon="globe-outline"
             iconColor={Colors.success}
             iconBg={Colors.successLight}
-            label={t('base_currency')}
-            sub={`${baseCurrency} · ${t('base_currency_sub')}`}
+            label={t('currency_preferences')}
+            sub={`${t('base_currency')}: ${baseCurrency} · ${t('local_currency')}: ${localCurrency}`}
+            onPress={openCurrencyModal}
           />
           <View style={styles.currencyDetailBox}>
-            <Text style={styles.currencyDetailText}>{t('base_currency_details')}</Text>
-            <Text style={styles.currencyDetailWarning}>{t('base_currency_details_warning')}</Text>
-          </View>
-          <View style={styles.currencySelector}>
-            {LOCAL_CURRENCY_OPTIONS.map((currency) => (
-              <TouchableOpacity
-                key={`base-${currency}`}
-                style={[styles.currencyOption, baseCurrency === currency && styles.currencyOptionActive]}
-                onPress={() => handleBaseCurrencyChange(currency)}
-              >
-                <Text style={[styles.currencyOptionText, baseCurrency === currency && styles.currencyOptionTextActive]}>
-                  {currency}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.divider} />
-          <SettingRow
-            icon="flag-outline"
-            iconColor={Colors.danger}
-            iconBg={Colors.dangerLight}
-            label={t('local_currency')}
-            sub={t('local_currency_sub')}
-          />
-          <View style={styles.currencyDetailBox}>
-            <Text style={styles.currencyDetailText}>{t('local_currency_details')}</Text>
-            <Text style={styles.currencyDetailWarning}>
-              {interpolate('local_currency_details_warning', { baseCurrency })}
-            </Text>
-          </View>
-          <View style={styles.currencySelector}>
-            {LOCAL_CURRENCY_OPTIONS.map((currency) => (
-              <TouchableOpacity
-                key={currency}
-                style={[styles.currencyOption, localCurrency === currency && styles.currencyOptionActive]}
-                onPress={() => handleLocalCurrencyChange(currency)}
-              >
-                <Text style={[styles.currencyOptionText, localCurrency === currency && styles.currencyOptionTextActive]}>
-                  {currency}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.currencyDetailText}>{t('currency_preferences_details')}</Text>
+            <Text style={styles.currencyDetailWarning}>{t('currency_reset_notice')}</Text>
           </View>
         </View>
 
@@ -358,6 +380,18 @@ export default function SettingsScreen() {
           {t('delete_account_warning')}
         </Text>
       </ScrollView>
+
+      <CurrencyPreferencesModal
+        visible={currencyModalVisible}
+        language={language}
+        baseCurrency={draftBaseCurrency}
+        localCurrency={draftLocalCurrency}
+        onBaseChange={setDraftBaseCurrency}
+        onLocalChange={setDraftLocalCurrency}
+        onCancel={() => setCurrencyModalVisible(false)}
+        onSave={saveCurrencyPreferences}
+        t={t}
+      />
     </View>
   );
 }
@@ -462,6 +496,7 @@ const styles = StyleSheet.create({
 
   currencySelector: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     paddingHorizontal: 14,
     paddingBottom: 14,
@@ -489,7 +524,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   currencyOption: {
-    flex: 1,
+    minWidth: 72,
+    flexGrow: 1,
+    flexBasis: '22%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
@@ -510,6 +547,77 @@ const styles = StyleSheet.create({
   currencyOptionTextActive: {
     color: Colors.primary,
   },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+  },
+  currencySheet: {
+    maxHeight: '86%',
+    backgroundColor: Colors.cardBg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 10,
+  },
+  currencySheetHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  currencySheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  sheetHeaderButton: { minWidth: 64, paddingVertical: 8 },
+  sheetCancelText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '700' },
+  sheetSaveText: { fontSize: 14, color: Colors.primary, fontWeight: '800', textAlign: 'right' },
+  currencySheetTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  currencySheetInfo: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.warning + '18',
+    color: Colors.textPrimary,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  currencySheetContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  currencySheetSection: {
+    fontSize: 12,
+    color: Colors.textLight,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  currencyChoiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  currencyChoice: {
+    width: '31.5%',
+    minHeight: 58,
+    borderRadius: 12,
+    borderWidth: 1.3,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  currencyChoiceActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accentLight,
+  },
+  currencyChoiceCode: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  currencyChoiceCodeActive: { color: Colors.primary },
+  currencyChoiceName: { fontSize: 10, color: Colors.textLight, marginTop: 3 },
+  currencyChoiceNameActive: { color: Colors.textSecondary },
 
   disclaimer: {
     flexDirection: 'row',

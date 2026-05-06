@@ -17,15 +17,20 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency, getEurUsd, getGbpUsd } from '../utils/currency';
+import { CURRENCY_META, SUPPORTED_CURRENCIES, convertCurrencyToUSD, convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { getAssetEmoji } from '../utils/assets';
 
-function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg }) {
+function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag }) {
   const isPositive = change >= 0;
 
   return (
     <View style={styles.rateCard}>
       <View style={[styles.rateIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
-        <Ionicons name={icon} size={20} color={iconColor || Colors.primary} />
+        {flag ? (
+          <Text style={styles.rateFlag}>{flag}</Text>
+        ) : (
+          <Ionicons name={icon} size={20} color={iconColor || Colors.primary} />
+        )}
       </View>
       <View style={styles.rateInfo}>
         <Text style={styles.rateLabel}>{label}</Text>
@@ -103,7 +108,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
   const { holdings, computeStats } = usePortfolio();
-  const { localCurrency, baseCurrency, t } = useSettings();
+  const { localCurrency, baseCurrency, language, t } = useSettings();
   const [selectedSection, setSelectedSection] = useState('forex');
 
   const getAssetPrice = (id) => {
@@ -117,11 +122,13 @@ export default function HomeScreen() {
       eth: prices.crypto?.eth?.usd,
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
-      usd: 1,
-      eur: prices.forex?.eurUsd,
-      gbp: prices.forex?.gbpUsd,
     };
-    return map[id] ?? null;
+    if (map[id] != null) return map[id];
+
+    const currency = typeof id === 'string' ? id.toUpperCase() : '';
+    if (currency === 'USD') return 1;
+    const usdToCurrency = prices.forex?.rates?.[currency] ?? null;
+    return usdToCurrency ? 1 / usdToCurrency : null;
   };
 
   const portfolioStats = useMemo(() => {
@@ -129,8 +136,6 @@ export default function HomeScreen() {
     return computeStats(getAssetPrice);
   }, [prices, computeStats]);
 
-  const eurUsd = getEurUsd(prices);
-  const gbpUsd = getGbpUsd(prices);
   const goldGramUSD = prices?.metals?.goldGramUSD;
   const silverGramUSD = prices?.metals?.silverGramUSD;
   const goldOzUSD = prices?.metals?.goldOzUSD;
@@ -211,17 +216,13 @@ export default function HomeScreen() {
     };
   };
 
-  const dollarRate = {
-    value: formatCurrency(convertUSDToCurrency(1, localCurrency, prices), localCurrency, 4),
-    valueLabel: `USD/${localCurrency}`,
-    subValue: baseCurrency === 'USD'
-      ? '1 USD'
-      : formatCurrency(convertUSDToCurrency(1, baseCurrency, prices), baseCurrency, 4),
-    subValueLabel: `USD/${baseCurrency}`,
-    subLabel: null,
-  };
-  const euroRate = formatForexCard('eur', eurUsd);
-  const poundRate = formatForexCard('gbp', gbpUsd);
+  const forexRates = SUPPORTED_CURRENCIES
+    .filter((currency) => currency !== localCurrency)
+    .map((currency) => ({
+      currency,
+      meta: CURRENCY_META[currency],
+      rate: formatForexCard(currency.toLowerCase(), getAssetPrice(currency.toLowerCase())),
+    }));
   const sectionOptions = [
     { key: 'forex', label: t('forex') },
     { key: 'metals', label: t('metals') },
@@ -311,39 +312,21 @@ export default function HomeScreen() {
           <>
             {selectedSection === 'forex' && (
               <>
-                <RateCard
-                  label={t('dollar')}
-                  subLabel={dollarRate.subLabel}
-                  value={dollarRate.value}
-                  valueLabel={dollarRate.valueLabel}
-                  subValue={dollarRate.subValue}
-                  subValueLabel={dollarRate.subValueLabel}
-                  icon="cash-outline"
-                  iconColor="#16A34A"
-                  iconBg="#DCFCE7"
-                />
-                <RateCard
-                  label={t('euro')}
-                  subLabel={euroRate.subLabel}
-                  value={euroRate.value}
-                  valueLabel={euroRate.valueLabel}
-                  subValue={euroRate.subValue}
-                  subValueLabel={euroRate.subValueLabel}
-                  icon="logo-euro"
-                  iconColor={Colors.primary}
-                  iconBg={Colors.accentLight}
-                />
-                <RateCard
-                  label={t('pound')}
-                  subLabel={poundRate.subLabel}
-                  value={poundRate.value}
-                  valueLabel={poundRate.valueLabel}
-                  subValue={poundRate.subValue}
-                  subValueLabel={poundRate.subValueLabel}
-                  icon="cash-outline"
-                  iconColor="#0F766E"
-                  iconBg="#CCFBF1"
-                />
+                {forexRates.map(({ currency, meta, rate }) => (
+                  <RateCard
+                    key={currency}
+                    label={language === 'en' ? meta.name : meta.localName}
+                    subLabel={rate.subLabel}
+                    value={rate.value}
+                    valueLabel={rate.valueLabel}
+                    subValue={rate.subValue}
+                    subValueLabel={rate.subValueLabel}
+                    flag={getAssetEmoji(currency.toLowerCase())}
+                    icon={currency === 'EUR' ? 'logo-euro' : 'cash-outline'}
+                    iconColor={currency === 'USD' ? '#16A34A' : Colors.primary}
+                    iconBg={currency === 'USD' ? '#DCFCE7' : Colors.accentLight}
+                  />
+                ))}
               </>
             )}
 
@@ -587,6 +570,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  rateFlag: { fontSize: 22 },
   rateInfo: { flex: 1 },
   rateLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   rateSubLabel: { fontSize: 12, color: Colors.textLight, marginTop: 1 },

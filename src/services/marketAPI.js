@@ -35,7 +35,17 @@ function transformResponse(json) {
   });
 
   return {
-    forex: { usdTry, usdEur, eurUsd, eurTry, usdGbp, gbpUsd, gbpTry, eurGbp },
+    forex: {
+      rates: { USD: 1, ...ratesData },
+      usdTry,
+      usdEur,
+      eurUsd,
+      eurTry,
+      usdGbp,
+      gbpUsd,
+      gbpTry,
+      eurGbp,
+    },
     metals: {
       goldOzUSD,
       silverOzUSD,
@@ -72,11 +82,13 @@ export const MarketAPI = {
       eth: prices.crypto?.eth?.usd,
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
-      usd: 1,
-      eur: prices.forex?.eurUsd,
-      gbp: prices.forex?.gbpUsd,
     };
-    return mapping[assetId] ?? null;
+    if (mapping[assetId] != null) return mapping[assetId];
+
+    const currency = typeof assetId === 'string' ? assetId.toUpperCase() : '';
+    const usdToCurrency = prices.forex?.rates?.[currency] ?? null;
+    if (currency === 'USD') return 1;
+    return usdToCurrency ? 1 / usdToCurrency : null;
   },
 
   getAsset24hChange(assetId, prices) {

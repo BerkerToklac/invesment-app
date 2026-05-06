@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { StorageService } from '../services/storage';
+import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { translate } from '../utils/i18n';
 
 const SettingsContext = createContext(null);
@@ -22,6 +23,12 @@ export const SettingsProvider = ({ children }) => {
     try {
       const stored = await StorageService.getSettings();
       const nextSettings = { ...DEFAULT_SETTINGS, ...(stored || {}) };
+      if (!SUPPORTED_CURRENCIES.includes(nextSettings.localCurrency)) {
+        nextSettings.localCurrency = DEFAULT_SETTINGS.localCurrency;
+      }
+      if (!SUPPORTED_CURRENCIES.includes(nextSettings.baseCurrency)) {
+        nextSettings.baseCurrency = DEFAULT_SETTINGS.baseCurrency;
+      }
       settingsRef.current = nextSettings;
       setSettings(nextSettings);
     } catch (error) {
@@ -50,24 +57,14 @@ export const SettingsProvider = ({ children }) => {
     return nextSettings;
   }, []);
 
-  const setLocalCurrency = useCallback(async (currency) => {
-    if (!['TRY', 'EUR', 'GBP', 'USD'].includes(currency)) return settings;
-    return updateSettings({ localCurrency: currency });
-  }, [settings, updateSettings]);
-
-  const setBaseCurrency = useCallback(async (currency) => {
-    if (!['TRY', 'EUR', 'GBP', 'USD'].includes(currency)) return settings;
-    return updateSettings({ baseCurrency: currency });
-  }, [settings, updateSettings]);
-
   const setCurrencyPreferences = useCallback(async ({ baseCurrency, localCurrency }) => {
     const updates = {};
 
-    if (baseCurrency && ['TRY', 'EUR', 'GBP', 'USD'].includes(baseCurrency)) {
+    if (baseCurrency && SUPPORTED_CURRENCIES.includes(baseCurrency)) {
       updates.baseCurrency = baseCurrency;
     }
 
-    if (localCurrency && ['TRY', 'EUR', 'GBP', 'USD'].includes(localCurrency)) {
+    if (localCurrency && SUPPORTED_CURRENCIES.includes(localCurrency)) {
       updates.localCurrency = localCurrency;
     }
 
@@ -89,13 +86,11 @@ export const SettingsProvider = ({ children }) => {
     language: settings.language || 'tr',
     notifications: settings.notifications ?? true,
     updateSettings,
-    setLocalCurrency,
-    setBaseCurrency,
     setCurrencyPreferences,
     setLanguage,
     reloadSettings: loadSettings,
     t: (key) => translate(settings.language || 'tr', key),
-  }), [loadSettings, loading, settings, setBaseCurrency, setCurrencyPreferences, setLanguage, setLocalCurrency, updateSettings]);
+  }), [loadSettings, loading, settings, setCurrencyPreferences, setLanguage, updateSettings]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

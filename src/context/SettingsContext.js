@@ -12,7 +12,9 @@ const DEFAULT_SETTINGS = {
   baseCurrency: 'USD',
   language: 'tr',
   notifications: true,
+  investmentPlatforms: ['Kişisel Kasam'],
 };
+const DEFAULT_INVESTMENT_PLATFORM = 'Kişisel Kasam';
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -28,6 +30,12 @@ export const SettingsProvider = ({ children }) => {
       }
       if (!SUPPORTED_CURRENCIES.includes(nextSettings.baseCurrency)) {
         nextSettings.baseCurrency = DEFAULT_SETTINGS.baseCurrency;
+      }
+      if (!Array.isArray(nextSettings.investmentPlatforms)) {
+        nextSettings.investmentPlatforms = DEFAULT_SETTINGS.investmentPlatforms;
+      }
+      if (!nextSettings.investmentPlatforms.includes(DEFAULT_INVESTMENT_PLATFORM)) {
+        nextSettings.investmentPlatforms = [DEFAULT_INVESTMENT_PLATFORM, ...nextSettings.investmentPlatforms];
       }
       settingsRef.current = nextSettings;
       setSettings(nextSettings);
@@ -77,6 +85,37 @@ export const SettingsProvider = ({ children }) => {
     return updateSettings({ language });
   }, [settings, updateSettings]);
 
+  const addInvestmentPlatform = useCallback(async (platformName) => {
+    const cleaned = typeof platformName === 'string' ? platformName.trim() : '';
+    if (!cleaned) return settingsRef.current.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms;
+
+    const current = settingsRef.current.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms;
+    const exists = current.some((item) => item.toLocaleLowerCase('tr-TR') === cleaned.toLocaleLowerCase('tr-TR'));
+    const nextPlatforms = exists ? current : [...current, cleaned];
+
+    if (!exists) {
+      await updateSettings({ investmentPlatforms: nextPlatforms });
+    }
+
+    return nextPlatforms;
+  }, [updateSettings]);
+
+  const removeInvestmentPlatform = useCallback(async (platformName) => {
+    const cleaned = typeof platformName === 'string' ? platformName.trim() : '';
+    if (!cleaned || cleaned === DEFAULT_INVESTMENT_PLATFORM) {
+      return settingsRef.current.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms;
+    }
+
+    const current = settingsRef.current.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms;
+    const nextPlatforms = current.filter((item) => item !== cleaned);
+    const normalizedPlatforms = nextPlatforms.includes(DEFAULT_INVESTMENT_PLATFORM)
+      ? nextPlatforms
+      : [DEFAULT_INVESTMENT_PLATFORM, ...nextPlatforms];
+
+    await updateSettings({ investmentPlatforms: normalizedPlatforms });
+    return normalizedPlatforms;
+  }, [updateSettings]);
+
   const value = useMemo(() => ({
     settings,
     loading,
@@ -85,12 +124,16 @@ export const SettingsProvider = ({ children }) => {
     baseCurrency: settings.baseCurrency || 'USD',
     language: settings.language || 'tr',
     notifications: settings.notifications ?? true,
+    investmentPlatforms: settings.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms,
     updateSettings,
     setCurrencyPreferences,
     setLanguage,
+    addInvestmentPlatform,
+    removeInvestmentPlatform,
+    defaultInvestmentPlatform: DEFAULT_INVESTMENT_PLATFORM,
     reloadSettings: loadSettings,
     t: (key) => translate(settings.language || 'tr', key),
-  }), [loadSettings, loading, settings, setCurrencyPreferences, setLanguage, updateSettings]);
+  }), [addInvestmentPlatform, loadSettings, loading, removeInvestmentPlatform, settings, setCurrencyPreferences, setLanguage, updateSettings]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

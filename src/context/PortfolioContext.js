@@ -69,6 +69,22 @@ export const PortfolioProvider = ({ children }) => {
     setHoldings([]);
   };
 
+  const reassignSourcePlatform = async (fromPlatform, toPlatform) => {
+    if (!user) throw new Error('Not authenticated');
+    const from = typeof fromPlatform === 'string' ? fromPlatform.trim() : '';
+    const to = typeof toPlatform === 'string' ? toPlatform.trim() : '';
+    if (!from || !to || from === to) return { modifiedCount: 0 };
+
+    const data = await apiClient.put('/investment/portfolio/source-platform/reassign', {
+      fromPlatform: from,
+      toPlatform: to,
+    });
+    setHoldings((prev) => prev.map((h) => (
+      h.sourcePlatform === from ? { ...h, sourcePlatform: to } : h
+    )));
+    return data;
+  };
+
   const computeStats = useCallback(
     (getAssetPrice) => {
       let totalCostUSD = 0;
@@ -154,6 +170,7 @@ export const PortfolioProvider = ({ children }) => {
         updateHolding,
         deleteHolding,
         clearPortfolio,
+        reassignSourcePlatform,
         computeStats,
         getGroupedHoldings,
         reload: loadHoldings,

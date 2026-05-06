@@ -296,7 +296,12 @@ export default function HomeScreen() {
               onPress={() => setSelectedSection(option.key)}
               activeOpacity={0.85}
             >
-              <Text style={[styles.segmentButtonText, selectedSection === option.key && styles.segmentButtonTextActive]}>
+              <Text
+                style={[styles.segmentButtonText, selectedSection === option.key && styles.segmentButtonTextActive]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+              >
                 {option.label}
               </Text>
             </TouchableOpacity>
@@ -509,8 +514,8 @@ const styles = StyleSheet.create({
   segmentedControl: {
     flexDirection: 'row',
     backgroundColor: Colors.cardBg,
-    borderRadius: 18,
-    padding: 6,
+    borderRadius: 14,
+    padding: 4,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -520,18 +525,22 @@ const styles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
+    borderRadius: 10,
   },
   segmentButtonActive: {
     backgroundColor: Colors.accentLight,
   },
   segmentButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: Colors.textSecondary,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   segmentButtonTextActive: {
     color: Colors.primary,

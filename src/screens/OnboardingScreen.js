@@ -21,19 +21,20 @@ import AuthLanguageSelector from '../components/AuthLanguageSelector';
 import { useSettings } from '../context/SettingsContext';
 import { CURRENCY_META, LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
 
-function CurrencyStrip({ title, value, onChange, language }) {
+function CurrencyStrip({ title, value, onChange, language, options = LOCAL_CURRENCY_OPTIONS }) {
   return (
     <View style={styles.currencyBlock}>
       <View style={styles.fieldLabelRow}>
-        <Ionicons name="cash-outline" size={15} color="rgba(255,255,255,0.6)" />
+        <Ionicons name="cash-outline" size={15} color={Colors.primary} />
         <Text style={styles.fieldLabel}>{title}</Text>
       </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.currencyStrip}
+        style={styles.currencyStripScroll}
       >
-        {LOCAL_CURRENCY_OPTIONS.map((currency) => {
+        {options.map((currency) => {
           const meta = CURRENCY_META[currency] || {};
           const selected = value === currency;
           return (
@@ -104,6 +105,10 @@ export default function OnboardingScreen({ route, navigation }) {
 
   const firstLetter = name.trim() ? name.trim()[0].toUpperCase() : null;
   const canContinue = name.trim().length >= 2;
+  const localCurrencyOptions = [
+    'TRY',
+    ...LOCAL_CURRENCY_OPTIONS.filter((currency) => currency !== 'TRY'),
+  ];
 
   const handleSave = async () => {
     if (name.trim().length < 2) {
@@ -187,6 +192,20 @@ export default function OnboardingScreen({ route, navigation }) {
                 {email}
               </Text>
             </View>
+          </Animated.View>
+
+          {/* Form Kartı */}
+          <Animated.View
+            style={[styles.formCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
+          >
+            <View style={styles.currencyNotice}>
+              <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
+              <View style={styles.currencyNoticeCopy}>
+                <Text style={styles.currencyNoticeTitle}>{t('currency_preferences')}</Text>
+                <Text style={styles.currencyNoticeText}>{t('onboarding_currency_intro')}</Text>
+                <Text style={styles.currencyNoticeText}>{t('onboarding_currency_notice')}</Text>
+              </View>
+            </View>
 
             <CurrencyStrip
               title={t('base_currency')}
@@ -200,22 +219,13 @@ export default function OnboardingScreen({ route, navigation }) {
               value={selectedLocalCurrency}
               onChange={setSelectedLocalCurrency}
               language={language}
+              options={localCurrencyOptions}
             />
 
-            <View style={styles.currencyNotice}>
-              <Ionicons name="information-circle-outline" size={15} color="rgba(255,255,255,0.78)" />
-              <Text style={styles.currencyNoticeText}>{t('onboarding_currency_notice')}</Text>
-            </View>
-          </Animated.View>
-
-          {/* Form Kartı */}
-          <Animated.View
-            style={[styles.formCard, { opacity: cardFade, transform: [{ translateY: cardSlide }] }]}
-          >
             {/* İsim */}
             <View style={styles.fieldBlock}>
               <View style={styles.fieldLabelRow}>
-                <Ionicons name="person-outline" size={15} color="rgba(255,255,255,0.6)" />
+                <Ionicons name="person-outline" size={15} color={Colors.primary} />
                 <Text style={styles.fieldLabel}>{t('onboarding_name_placeholder')}</Text>
                 <Text style={styles.fieldRequired}>*</Text>
               </View>
@@ -332,9 +342,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.9)',
+    color: '#fff',
     textAlign: 'center',
     lineHeight: 22,
+    fontWeight: '700',
   },
 
   // Profil Önizleme
@@ -342,12 +353,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
     padding: 16,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.38)',
   },
   avatarWrap: { position: 'relative', width: 60, height: 60 },
   avatarGradient: {
@@ -386,18 +397,19 @@ const styles = StyleSheet.create({
   },
   previewDetail: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.86)',
+    color: '#fff',
     lineHeight: 17,
+    fontWeight: '700',
   },
 
   // Form
   formCard: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderRadius: 22,
     padding: 20,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.7)',
     gap: 16,
   },
   fieldBlock: { gap: 8, paddingVertical: 4 },
@@ -408,74 +420,81 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.92)',
+    fontWeight: '800',
+    color: Colors.textPrimary,
   },
   fieldRequired: { fontSize: 14, color: Colors.danger, fontWeight: '700' },
   fieldOptional: { fontSize: 12, color: 'rgba(255,255,255,0.72)', marginLeft: 2 },
   fieldInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: Colors.border,
     paddingHorizontal: 14,
     height: 52,
   },
   fieldInputFocused: {
-    borderColor: 'rgba(255,255,255,0.7)',
-    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderColor: Colors.primary,
+    backgroundColor: '#fff',
   },
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
+    color: Colors.textPrimary,
+    fontWeight: '700',
   },
-  currencyBlock: { gap: 8 },
+  currencyBlock: { gap: 8, width: '100%' },
+  currencyStripScroll: { width: '100%', flexGrow: 0 },
   currencyStrip: { gap: 8, paddingRight: 6 },
   currencyChip: {
     width: 104,
     minHeight: 58,
     borderRadius: 14,
     borderWidth: 1.3,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.border,
+    backgroundColor: '#fff',
     paddingHorizontal: 10,
     paddingVertical: 8,
     justifyContent: 'center',
   },
   currencyChipActive: {
-    borderColor: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accentLight,
   },
   currencyChipCode: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#fff',
+    color: Colors.textPrimary,
   },
-  currencyChipCodeActive: { color: '#fff' },
+  currencyChipCodeActive: { color: Colors.primary },
   currencyChipName: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
+    color: Colors.textSecondary,
     marginTop: 3,
+    fontWeight: '700',
   },
-  currencyChipNameActive: { color: 'rgba(255,255,255,0.92)' },
+  currencyChipNameActive: { color: Colors.textPrimary },
   currencyNotice: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 7,
     padding: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.accentLight,
+  },
+  currencyNoticeCopy: { flex: 1, gap: 4 },
+  currencyNoticeTitle: {
+    fontSize: 13,
+    color: Colors.textPrimary,
+    fontWeight: '800',
   },
   currencyNoticeText: {
-    flex: 1,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.78)',
-    lineHeight: 16,
-    fontWeight: '600',
+    fontSize: 12,
+    color: Colors.textPrimary,
+    lineHeight: 17,
+    fontWeight: '700',
   },
 
   // Gizlilik
@@ -486,7 +505,7 @@ const styles = StyleSheet.create({
   },
   privacyText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.76)',
+    color: 'rgba(255,255,255,0.9)',
   },
 
   // Buton

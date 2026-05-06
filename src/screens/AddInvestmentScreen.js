@@ -128,15 +128,38 @@ function DatePickerField({ value, onChange }) {
 
 function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) {
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('forex');
+  const categoryOptions = [
+    { key: 'forex', label: t('forex') },
+    { key: 'metals', label: t('metals') },
+    { key: 'crypto', label: t('crypto') },
+  ];
+  const getAssetSymbolLine = (asset) => {
+    return Array.from(new Set([asset.shortName, asset.unit].filter(Boolean))).join(' · ');
+  };
 
   const filtered = useMemo(
-    () =>
-      assets.filter(
-        (a) =>
-          a.name.toLowerCase().includes(search.toLowerCase()) ||
-          (a.shortName || '').toLowerCase().includes(search.toLowerCase())
-      ),
-    [assets, search]
+    () => {
+      const query = search.trim().toLowerCase();
+      return assets.filter((a) => {
+        const assetCategory = ['gold', 'silver'].includes(a.type) ? 'metals' : a.type;
+        const matchesCategory = query || assetCategory === selectedCategory;
+        const searchable = [
+          a.name,
+          a.shortName,
+          a.unit,
+          a.id,
+          getLocalizedAssetName(a.id, 'tr'),
+          getLocalizedAssetName(a.id, 'en'),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return matchesCategory && (!query || searchable.includes(query));
+      });
+    },
+    [assets, search, selectedCategory]
   );
 
   return (
@@ -160,6 +183,28 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) 
           />
         </View>
 
+        {!search.trim() ? (
+          <View style={styles.assetCategoryTabs}>
+            {categoryOptions.map((category) => (
+              <TouchableOpacity
+                key={category.key}
+                style={[styles.assetCategoryTab, selectedCategory === category.key && styles.assetCategoryTabActive]}
+                onPress={() => setSelectedCategory(category.key)}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={[styles.assetCategoryText, selectedCategory === category.key && styles.assetCategoryTextActive]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                >
+                  {category.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
@@ -177,6 +222,9 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) 
               </View>
               <View style={styles.assetItemInfo}>
                 <Text style={styles.assetItemName}>{item.name}</Text>
+                <Text style={styles.assetItemSymbol}>
+                  {getAssetSymbolLine(item)}
+                </Text>
               </View>
               {item.id === currentId && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
             </TouchableOpacity>
@@ -193,6 +241,119 @@ function FormRow({ label, children }) {
       <Text style={styles.formLabel}>{label}</Text>
       {children}
     </View>
+  );
+}
+
+function PlatformPickerModal({
+  visible,
+  onClose,
+  platforms,
+  selectedPlatform,
+  defaultPlatform,
+  onSelect,
+  onAdd,
+  onDelete,
+  t,
+}) {
+  const [platformName, setPlatformName] = useState('');
+  const cleanedPlatformName = platformName.trim();
+
+  const handleAdd = async () => {
+    if (!cleanedPlatformName) return;
+    await onAdd(cleanedPlatformName);
+    onSelect(cleanedPlatformName);
+    setPlatformName('');
+    onClose();
+  };
+
+  const handleDelete = (item) => {
+    if (item === defaultPlatform) return;
+    Alert.alert(
+      t('source_platform_delete_title'),
+      t('source_platform_delete_body'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('source_platform_delete'),
+          style: 'destructive',
+          onPress: () => onDelete(item),
+        },
+      ]
+    );
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>{t('source_platform')}</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Ionicons name="close" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.platformGuide}>
+          <Ionicons name="information-circle-outline" size={17} color={Colors.primary} />
+          <Text style={styles.platformGuideText}>{t('source_platform_guide')}</Text>
+        </View>
+
+        <FlatList
+          data={platforms}
+          keyExtractor={(item) => item}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          renderItem={({ item }) => (
+            <View style={[styles.platformItem, selectedPlatform === item && styles.platformItemActive]}>
+              <TouchableOpacity
+                style={styles.platformItemSelect}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={styles.platformIcon}>
+                  <Ionicons name="business-outline" size={18} color={Colors.primary} />
+                </View>
+                <View style={styles.platformItemCopy}>
+                  <Text style={styles.platformItemText}>{item}</Text>
+                  {item === defaultPlatform ? (
+                    <Text style={styles.platformItemSub}>{t('source_platform_default_locked')}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+              {selectedPlatform === item ? <Ionicons name="checkmark-circle" size={20} color={Colors.primary} /> : null}
+              {item !== defaultPlatform ? (
+                <TouchableOpacity onPress={() => handleDelete(item)} style={styles.platformDeleteBtn} activeOpacity={0.8}>
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+        />
+
+        <View style={styles.platformAddBox}>
+          <Text style={styles.platformAddTitle}>{t('source_platform_add_new')}</Text>
+          <TextInput
+            style={styles.platformAddInput}
+            placeholder={t('source_platform_placeholder')}
+            placeholderTextColor={Colors.textLight}
+            value={platformName}
+            onChangeText={setPlatformName}
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+          />
+          <TouchableOpacity
+            style={[styles.platformAddButton, !cleanedPlatformName && styles.platformAddButtonDisabled]}
+            onPress={handleAdd}
+            disabled={!cleanedPlatformName}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.platformAddButtonText}>{t('source_platform_add')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -214,15 +375,26 @@ function buildCurrencyTotalsSnapshot(total, currency, prices) {
 
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { addHolding } = usePortfolio();
+  const { addHolding, reassignSourcePlatform } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
-  const { localCurrency, baseCurrency, language, t } = useSettings();
+  const {
+    localCurrency,
+    baseCurrency,
+    language,
+    investmentPlatforms,
+    addInvestmentPlatform,
+    removeInvestmentPlatform,
+    defaultInvestmentPlatform,
+    t,
+  } = useSettings();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [platformPickerVisible, setPlatformPickerVisible] = useState(false);
   const [date, setDate] = useState(new Date());
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
+  const [sourcePlatform, setSourcePlatform] = useState(defaultInvestmentPlatform || 'Kişisel Kasam');
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
@@ -253,6 +425,13 @@ export default function AddInvestmentScreen({ navigation }) {
         })),
     [language]
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPickerVisible(true);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     setPriceCurrency((current) => (priceCurrencyOptions.includes(current) ? current : localCurrency));
@@ -304,6 +483,7 @@ export default function AddInvestmentScreen({ navigation }) {
     : totalCostUSD;
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
+  const selectedSourcePlatform = sourcePlatform || defaultInvestmentPlatform || 'Kişisel Kasam';
 
   const autofillPrice = () => {
     if (!currentMarketPrice) {
@@ -363,6 +543,7 @@ export default function AddInvestmentScreen({ navigation }) {
         buyLocalCurrency,
         buyFxLocalPerUSD,
         buyLocalTotal,
+        sourcePlatform: selectedSourcePlatform,
         note: '',
       });
 
@@ -420,6 +601,23 @@ export default function AddInvestmentScreen({ navigation }) {
             <>
               <FormRow label={`${t('purchase_date')} *`}>
                 <DatePickerField value={date} onChange={setDate} />
+              </FormRow>
+
+              <FormRow label={t('source_platform')}>
+                <TouchableOpacity style={styles.platformPickerBtn} onPress={() => setPlatformPickerVisible(true)} activeOpacity={0.85}>
+                  <View style={styles.platformPickerLeft}>
+                    <View style={styles.platformPickerIcon}>
+                      <Ionicons name="business-outline" size={18} color={Colors.primary} />
+                    </View>
+                    <View style={styles.platformPickerTextWrap}>
+                      <Text style={[styles.platformPickerText, !sourcePlatform && styles.platformPickerPlaceholder]}>
+                        {sourcePlatform || t('source_platform_select')}
+                      </Text>
+                      <Text style={styles.platformPickerHint}>{t('source_platform_hint')}</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-down" size={18} color={Colors.textLight} />
+                </TouchableOpacity>
               </FormRow>
 
               <FormRow label={`${t('amount')} *`}>
@@ -564,6 +762,23 @@ export default function AddInvestmentScreen({ navigation }) {
         assets={pickerAssets}
         t={t}
       />
+      <PlatformPickerModal
+        visible={platformPickerVisible}
+        onClose={() => setPlatformPickerVisible(false)}
+        platforms={investmentPlatforms || []}
+        selectedPlatform={sourcePlatform}
+        defaultPlatform={defaultInvestmentPlatform}
+        onSelect={setSourcePlatform}
+        onAdd={addInvestmentPlatform}
+        onDelete={async (platformName) => {
+          await reassignSourcePlatform(platformName, defaultInvestmentPlatform);
+          await removeInvestmentPlatform(platformName);
+          if (sourcePlatform === platformName) {
+            setSourcePlatform(defaultInvestmentPlatform);
+          }
+        }}
+        t={t}
+      />
     </View>
   );
 }
@@ -686,6 +901,30 @@ const styles = StyleSheet.create({
   assetPickerName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   assetPickerType: { fontSize: 12, color: Colors.textLight, textTransform: 'capitalize' },
   assetPickerPlaceholder: { fontSize: 16, color: Colors.textLight },
+  platformPickerBtn: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  platformPickerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  platformPickerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.accentLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  platformPickerTextWrap: { flex: 1 },
+  platformPickerText: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  platformPickerPlaceholder: { color: Colors.textLight },
+  platformPickerHint: { fontSize: 11, color: Colors.textSecondary, marginTop: 3, fontWeight: '600' },
 
   marketPriceInfo: {
     backgroundColor: Colors.accentLight,
@@ -747,6 +986,80 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBg,
   },
   modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  platformGuide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    margin: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.accentLight,
+  },
+  platformGuideText: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.textPrimary, fontWeight: '700' },
+  platformItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.cardBg,
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  platformItemActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accentLight,
+  },
+  platformIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.accentLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  platformItemSelect: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  platformItemCopy: { flex: 1 },
+  platformItemText: { fontSize: 15, color: Colors.textPrimary, fontWeight: '800' },
+  platformItemSub: { fontSize: 11, color: Colors.textLight, fontWeight: '700', marginTop: 2 },
+  platformDeleteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.dangerLight,
+  },
+  platformAddBox: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.cardBg,
+  },
+  platformAddTitle: { fontSize: 13, fontWeight: '800', color: Colors.textSecondary, marginBottom: 8 },
+  platformAddInput: {
+    backgroundColor: Colors.background,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 46,
+    fontSize: 15,
+    color: Colors.textPrimary,
+    marginBottom: 10,
+  },
+  platformAddButton: {
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  platformAddButtonDisabled: { opacity: 0.45 },
+  platformAddButtonText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -760,6 +1073,38 @@ const styles = StyleSheet.create({
     height: 46,
   },
   searchInput: { flex: 1, fontSize: 16, color: Colors.textPrimary },
+  assetCategoryTabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: Colors.cardBg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  assetCategoryTab: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  assetCategoryTabActive: {
+    backgroundColor: Colors.primary,
+  },
+  assetCategoryText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+  assetCategoryTextActive: {
+    color: '#fff',
+  },
   assetItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -777,6 +1122,7 @@ const styles = StyleSheet.create({
   assetItemEmoji: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   assetItemInfo: { flex: 1 },
   assetItemName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  assetItemSymbol: { fontSize: 12, color: Colors.textLight, fontWeight: '700', marginTop: 3 },
 
   dateTrigger: {
     flexDirection: 'row',

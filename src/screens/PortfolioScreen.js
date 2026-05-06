@@ -258,6 +258,11 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
         <Text style={styles.holdingMeta}>
           {buyLabel} · {t('cost')}: {formatCurrency(costBase, baseCurrency)} ({formatCurrency(costLocal, localCurrency)}) · {t('purchase_date')}: {formatDate(holding.buyDate) || '-'}
         </Text>
+        {holding.sourcePlatform ? (
+          <Text style={styles.holdingMeta}>
+            {t('source_platform')}: {holding.sourcePlatform}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -635,6 +640,11 @@ export default function PortfolioScreen({ navigation }) {
                             t,
                           })}
                         </Text>
+                        {h.sourcePlatform ? (
+                          <Text style={styles.subBuyPrice}>
+                            {t('source_platform')}: {h.sourcePlatform}
+                          </Text>
+                        ) : null}
                         {h.assetId === activeBaseAssetId && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null ? (() => {
                           const localCurrent = convertUSDToCurrency(h.currentUSD || 0, localCurrency, prices);
                           const localPl = localCurrent - h.buyLocalTotal;

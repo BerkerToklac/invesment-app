@@ -18,7 +18,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
 import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
-import { getAssetEmoji } from '../utils/assets';
+import { PREDEFINED_ASSETS, getAssetEmoji } from '../utils/assets';
 
 function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag }) {
   const isPositive = change >= 0;
@@ -64,6 +64,8 @@ function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel,
   );
 }
 
+const CRYPTO_RATE_ASSETS = PREDEFINED_ASSETS.filter((asset) => asset.type === 'crypto');
+
 function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
   const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
   if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
@@ -91,6 +93,15 @@ export default function HomeScreen() {
       eth: prices.crypto?.eth?.usd,
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
+      sol: prices.crypto?.sol?.usd,
+      trx: prices.crypto?.trx?.usd,
+      ada: prices.crypto?.ada?.usd,
+      xmr: prices.crypto?.xmr?.usd,
+      xlm: prices.crypto?.xlm?.usd,
+      ltc: prices.crypto?.ltc?.usd,
+      avax: prices.crypto?.avax?.usd,
+      paxg: prices.crypto?.paxg?.usd,
+      xaut: prices.crypto?.xaut?.usd,
     };
     if (map[id] != null) return map[id];
 
@@ -109,11 +120,6 @@ export default function HomeScreen() {
   const silverGramUSD = prices?.metals?.silverGramUSD;
   const goldOzUSD = prices?.metals?.goldOzUSD;
   const silverOzUSD = prices?.metals?.silverOzUSD;
-
-  const btcChange = prices?.crypto?.btc?.change24h;
-  const ethChange = prices?.crypto?.eth?.change24h;
-  const bnbChange = prices?.crypto?.bnb?.change24h;
-  const xrpChange = prices?.crypto?.xrp?.change24h;
 
   const lastUpdatedStr = lastUpdated
     ? lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
@@ -345,46 +351,25 @@ export default function HomeScreen() {
 
             {selectedSection === 'crypto' && (
               <>
-                <RateCard
-                  label={t('bitcoin')}
-                  subLabel="BTC / USD"
-                  value={baseValue(prices?.crypto?.btc?.usd, 2)}
-                  subValue={baseSubValue(prices?.crypto?.btc?.usd, 2)}
-                  change={btcChange}
-                  icon="logo-bitcoin"
-                  iconColor="#F7931A"
-                  iconBg="#FEF3C7"
-                />
-                <RateCard
-                  label="Ethereum"
-                  subLabel="ETH / USD"
-                  value={baseValue(prices?.crypto?.eth?.usd, 2)}
-                  subValue={baseSubValue(prices?.crypto?.eth?.usd, 2)}
-                  change={ethChange}
-                  icon="logo-bitcoin"
-                  iconColor="#627EEA"
-                  iconBg="#E0E7FF"
-                />
-                <RateCard
-                  label="BNB"
-                  subLabel="BNB / USD"
-                  value={baseValue(prices?.crypto?.bnb?.usd, 2)}
-                  subValue={baseSubValue(prices?.crypto?.bnb?.usd, 2)}
-                  change={bnbChange}
-                  icon="cube-outline"
-                  iconColor="#F0B90B"
-                  iconBg="#FEF3C7"
-                />
-                <RateCard
-                  label={t('ripple')}
-                  subLabel="XRP / USD"
-                  value={baseValue(prices?.crypto?.xrp?.usd, 4)}
-                  subValue={baseSubValue(prices?.crypto?.xrp?.usd, 4)}
-                  change={xrpChange}
-                  icon="water-outline"
-                  iconColor="#00AAE4"
-                  iconBg={Colors.accentLight}
-                />
+                {CRYPTO_RATE_ASSETS.map((asset) => {
+                  const usdValue = prices?.crypto?.[asset.id]?.usd;
+                  const decimals = usdValue != null && usdValue < 1 ? 4 : 2;
+
+                  return (
+                    <RateCard
+                      key={asset.id}
+                      label={asset.name}
+                      subLabel={`${asset.shortName} / USD`}
+                      value={baseValue(usdValue, decimals)}
+                      subValue={baseSubValue(usdValue, decimals)}
+                      change={prices?.crypto?.[asset.id]?.change24h}
+                      icon="logo-bitcoin"
+                      iconColor={asset.color}
+                      iconBg={Colors.accentLight}
+                      flag={asset.emoji}
+                    />
+                  );
+                })}
               </>
             )}
           </>

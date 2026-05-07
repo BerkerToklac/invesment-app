@@ -82,6 +82,15 @@ export const MarketAPI = {
       eth: prices.crypto?.eth?.usd,
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
+      sol: prices.crypto?.sol?.usd,
+      trx: prices.crypto?.trx?.usd,
+      ada: prices.crypto?.ada?.usd,
+      xmr: prices.crypto?.xmr?.usd,
+      xlm: prices.crypto?.xlm?.usd,
+      ltc: prices.crypto?.ltc?.usd,
+      avax: prices.crypto?.avax?.usd,
+      paxg: prices.crypto?.paxg?.usd,
+      xaut: prices.crypto?.xaut?.usd,
     };
     if (mapping[assetId] != null) return mapping[assetId];
 

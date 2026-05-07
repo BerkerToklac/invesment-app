@@ -241,7 +241,12 @@ export default function PortfolioScreen({ navigation }) {
       bnb: prices.crypto?.bnb?.usd,
       xrp: prices.crypto?.xrp?.usd,
       sol: prices.crypto?.sol?.usd,
-      usdt: prices.crypto?.usdt?.usd,
+      trx: prices.crypto?.trx?.usd,
+      ada: prices.crypto?.ada?.usd,
+      xmr: prices.crypto?.xmr?.usd,
+      xlm: prices.crypto?.xlm?.usd,
+      ltc: prices.crypto?.ltc?.usd,
+      avax: prices.crypto?.avax?.usd,
       paxg: prices.crypto?.paxg?.usd,
       xaut: prices.crypto?.xaut?.usd,
     };

@@ -1,4 +1,4 @@
-# Portföy
+# MoneyBook
 
 `invesment-app`, Expo ile geliştirilen INVESTMENT istemcisidir. Uygulama e-posta kodu ile giriş, piyasa verisi görüntüleme, portföy yönetimi ve kullanıcı ayarları akışlarını içerir.
 

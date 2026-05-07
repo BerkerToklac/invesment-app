@@ -35,7 +35,10 @@ import {
 import { DEFAULT_INVESTMENT_PLATFORM, getPlatformDisplayName } from '../utils/platforms';
 
 const FOREX_ASSET_IDS = SUPPORTED_CURRENCIES.map((currency) => currency.toLowerCase());
-const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
+const CRYPTO_ASSET_IDS = PREDEFINED_ASSETS
+  .filter((asset) => asset.type === 'crypto')
+  .map((asset) => asset.id);
+const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', ...CRYPTO_ASSET_IDS];
 const SNAPSHOT_CURRENCIES = SUPPORTED_CURRENCIES;
 
 function sanitizeTwoDecimalInput(value) {

@@ -1,179 +1,90 @@
-# MoneyBook
+# MoneyBook (invesment-app)
 
-`invesment-app`, Expo ile geliştirilen INVESTMENT istemcisidir. Uygulama e-posta kodu ile giriş, piyasa verisi görüntüleme, portföy yönetimi ve kullanıcı ayarları akışlarını içerir.
+`invesment-app`, Expo ile gelistirilen INVESTMENT istemcisidir. Uygulama e-posta kodu ile giris, piyasa verisi goruntuleme, portfoy yonetimi ve kullanici ayarlari akislarini icerir.
 
-Backend karşılığı:
+Backend karsiligi `/Users/airm4/Desktop/dev/project1-be` reposundaki `INVESTMENT` ve `SHAREDBACKEND` alanlaridir.
 
-- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)
+## Guncel Durum
 
-Bu istemci backend tarafında şu alanlarla konuşur:
+- Mobil istemci aktif gelistirme altindadir.
+- Backend baglantisi `EXPO_PUBLIC_BACKEND_URL` uzerinden yonetilir.
+- Piyasa verisi backendde OpenExchangeRates + CoinMarketCap birlesimiyle uretilir, istemci `/investment/market` endpointinden ceker.
 
-- `INVESTMENT`
-- `SHAREDBACKEND`
+Not: Mobil release davranisi BOMS/Petsy ile ayni modeldedir; mobil degisiklikler store review ve kullanici update sonrasinda canli olur.
 
-## Özellikler
+## Ozellikler
 
-- e-posta kodu ile giriş
-- döviz, kıymetli maden ve kripto fiyatları
-- portföy CRUD
-- onboarding sırasında baz para birimi ve yerel para birimi seçimi
-- ayarlardan baz / yerel para birimini tek popup içinde değiştirme
-- para birimi değişiminde portföy sıfırlama uyarısı
-- alış kaynağı / platform takibi
-- kullanıcı tanımlı platform listesi
-- kategori ve platform dağılımı
-- support iletişim bilgisi
-- Türkçe / İngilizce dil desteği
-
-Bugün desteklenen para birimleri:
-
-- Top 20 dünya para birimi: `USD`, `EUR`, `JPY`, `GBP`, `CNY`, `CHF`, `AUD`, `CAD`, `HKD`, `SGD`, `INR`, `KRW`, `SEK`, `MXN`, `NZD`, `NOK`, `TWD`, `BRL`, `ZAR`, `PLN`
-- Türkiye ve Avrupa ekleri: `TRY`, `DKK`, `CZK`, `HUF`, `RON`, `BGN`, `ISK`, `UAH`, `RSD`, `ALL`, `BAM`, `MKD`, `MDL`, `GEL`, `AMD`, `AZN`, `RUB`, `BYN`
-
-Bugün öne çıkan piyasa varlıkları:
-
-- forex: desteklenen para birimi listesindeki tüm dövizler
-- metaller: gram / ons altın, gram / ons gümüş
-- kripto: `BTC`, `ETH`, `BNB`, `XRP`, `SOL`, `USDT`, `PAXG`, `XAUT`
+- e-posta kodu ile giris
+- doviz, kiymetli maden ve kripto fiyatlari
+- portfoy CRUD
+- onboarding sirasinda baz para birimi ve yerel para birimi secimi
+- ayarlardan baz / yerel para birimini tek popup icinde degistirme
+- para birimi degisiminde portfoy sifirlama uyarisi
+- alis kaynagi / platform takibi
+- kullanici tanimli platform listesi
+- kategori ve platform dagilimi
+- Turkce / Ingilizce dil destegi
 
 ## Para Birimi Modeli
 
-Uygulamada iki ayrı para birimi kavramı vardır:
-
 ### Baz Para Birimi
 
-- portföyün ana referans para birimidir
-- toplam değer, maliyet ve kar/zarar bu para birimine göre ana eksende yorumlanır
-- daha tutarlı uzun vadeli takip için görece düşük enflasyonlu bir para birimi seçilmesi önerilir
-- değiştirildiğinde mevcut portföy sıfırlanır
+- portfoyun ana referans para birimidir
+- toplam deger, maliyet ve kar/zarar bu para birimine gore yorumlanir
+- degistirildiginde mevcut portfoy sifirlanir
 
-### Yerel Para Birimi / Display / Local Currency
+### Yerel Para Birimi
 
-- rakamların ekranda hangi para biriminde gösterileceğini belirler
-- baz para birimi varlığı eklenirken alış kuru bu para birimi üzerinden girilir
-- değiştirildiğinde mevcut portföy sıfırlanır
-
-Önemli not:
-
-- sistemin normalize hesap omurgası halen USD verisi üzerinden çalışır
-- yeni işlemlerde alış maliyeti, işlem anındaki çapraz kur snapshot'larıyla desteklenen para birimlerinde saklanır
-- eski kayıt fallback'leri temizlenmiştir; DB reset sonrası beklenen veri modeli yeni snapshot alanlarıdır
-
-## Platform / Alış Kaynağı Modeli
-
-Yatırım eklerken kullanıcı varlığı nereden aldığını veya nerede tuttuğunu seçebilir.
-
-- varsayılan platform `Kişisel Kasam` değeridir
-- İngilizce arayüzde varsayılan platform `Personal Safe` olarak gösterilir
-- varsayılan platform silinemez
-- kullanıcı yeni platform ekleyebilir
-- kullanıcı eklediği platformları silebilir
-- silinen platforma bağlı mevcut yatırımlar varsayılan platforma taşınır
-
-Örnek platformlar:
-
-- kişisel kasa
-- A Bankası
-- B Bankası
-- C finans platformu
+- rakamlarin ekranda hangi para biriminde gosterilecegini belirler
+- baz para birimi varligi eklenirken alis kuru bu para birimi uzerinden girilir
+- degistirildiginde mevcut portfoy sifirlanir
 
 ## API Endpoint'leri
 
-| Method | Endpoint | Auth | Açıklama |
+| Method | Endpoint | Auth | Aciklama |
 |---|---|---|---|
-| `POST` | `/users/getLoginCode` | Hayır | Giriş kodu e-posta ile gönderilir |
-| `POST` | `/users/verifyLoginCode` | Hayır | Kod doğrulanır, JWT döner |
+| `POST` | `/users/getLoginCode` | Hayir | Giris kodu e-posta ile gonderilir |
+| `POST` | `/users/verifyLoginCode` | Hayir | Kod dogrulanir, JWT doner |
 | `GET` | `/users/me` | Evet | Oturum bilgisi |
 | `DELETE` | `/users/me` | Evet | Hesap silme |
-| `GET` | `/investment/market` | Hayır | Döviz, metal ve kripto fiyatları |
+| `GET` | `/investment/market` | Hayir | Doviz, metal ve kripto fiyatlari |
 | `GET` | `/investment/profile` | Evet | Profil bilgisi |
-| `PUT` | `/investment/profile` | Evet | Profil güncelleme |
-| `GET` | `/investment/portfolio` | Evet | Portföy kalemleri |
+| `PUT` | `/investment/profile` | Evet | Profil guncelleme |
+| `GET` | `/investment/portfolio` | Evet | Portfoy kalemleri |
 | `POST` | `/investment/portfolio` | Evet | Yeni kalem ekle |
-| `PUT` | `/investment/portfolio/:id` | Evet | Kalem güncelle |
+| `PUT` | `/investment/portfolio/:id` | Evet | Kalem guncelle |
 | `DELETE` | `/investment/portfolio/:id` | Evet | Kalem sil |
-| `PUT` | `/investment/portfolio/source-platform/reassign` | Evet | Platforma bağlı kayıtları başka platforma taşı |
-| `DELETE` | `/investment/portfolio/all` | Evet | Tüm portföyü temizle |
+| `PUT` | `/investment/portfolio/source-platform/reassign` | Evet | Platforma bagli kayitlari baska platforma tasi |
+| `DELETE` | `/investment/portfolio/all` | Evet | Tum portfoyu temizle |
 
 ## Frontend-Backend Entegrasyonu
 
-Backend istemcisi:
+Backend istemcisi: `src/services/apiClient.js`
 
-- [src/services/apiClient.js](/Users/airm4/Desktop/dev/invesment-app/src/services/apiClient.js)
+Davranis:
 
-Davranış:
-
-- `EXPO_PUBLIC_BACKEND_URL` kullanılır
-- auth token AsyncStorage içinde tutulur
-- auth çağrılarında app değeri `investment` olarak gönderilir
+- `EXPO_PUBLIC_BACKEND_URL` kullanilir
+- auth token AsyncStorage icinde tutulur
+- auth cagrilarinda app degeri `investment` olarak gonderilir
 
 Ana namespace'ler:
 
 - `/users`
 - `/investment`
 
-## Piyasa Verisi
-
-Backend tarafında:
-
-- OpenExchangeRates -> forex + metal türetmeleri
-- CoinMarketCap -> kripto snapshot'ları
-
-İstemci bu verileri:
-
-- `/investment/market`
-
-endpoint'i üzerinden çeker.
-
-## Versiyon ve Konfigürasyon
-
-Uygulama versiyonu:
-
-- [app.json](/Users/airm4/Desktop/dev/invesment-app/app.json)
-
-Ayarlar ekranındaki version bilgisi buradan okunur.
-
-Backend URL:
-
-- `.env`
-
-Örnek:
-
-```env
-EXPO_PUBLIC_BACKEND_URL=https://project1-be-1.onrender.com
-```
-
-## Proje Yapısı
-
-```text
-invesment-app/
-|-- App.js
-|-- app.json
-|-- src/
-|   |-- components/
-|   |-- context/
-|   |-- navigation/
-|   |-- screens/
-|   |-- services/
-|   |-- theme/
-|   `-- utils/
-`-- README.md
-```
-
 ## Kurulum
 
 ```bash
-cd invesment-app
 npm install
 ```
 
-`.env` dosyası oluşturun:
+`.env` dosyasi olusturun:
 
 ```env
 EXPO_PUBLIC_BACKEND_URL=https://project1-be-1.onrender.com
 ```
 
-Uygulamayı başlatın:
+Uygulamayi baslatin:
 
 ```bash
 npm start
@@ -187,15 +98,6 @@ npm run ios
 npm run web
 ```
 
-## Geliştirme Notları
-
-- Ayarlar ekranındaki baz / yerel para birimi davranışları ürün açısından kritiktir; değişiklik mevcut portföyü sıfırlar.
-- Base currency asset'i için yatırım ekleme ekranında özel local-rate girişi vardır.
-- Ana sayfa ve portföy ekranları base currency'yi ana gösterim, local currency'yi ikincil gösterim olarak kullanır.
-- Döviz isimleri ana ekran ve varlık seçici arasında `CURRENCY_META` üzerinden ortaklaştırılmıştır.
-- Platform adı veride canonical olarak saklanır; varsayılan platform İngilizce arayüzde display helper ile `Personal Safe` görünür.
-- DB reset sonrası eski portföy fallback'lerine güvenilmez; yeni kayıtlar `buyCurrencyTotals` snapshot'ı ile oluşturulmalıdır.
-
-## İlgili Repo
+## Ilgili Repo
 
 - [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)

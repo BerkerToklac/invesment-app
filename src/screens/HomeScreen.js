@@ -172,9 +172,9 @@ const FAVORITE_SECTION_LABELS = {
 };
 
 function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
-  const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
-  if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
-    return snapshotBaseCost;
+  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
+  if (holding.assetId === activeBaseAssetId) {
+    return holding.amount || 0;
   }
 
   return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);

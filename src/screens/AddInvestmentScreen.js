@@ -40,7 +40,6 @@ const CRYPTO_ASSET_IDS = PREDEFINED_ASSETS
   .filter((asset) => asset.type === 'crypto')
   .map((asset) => asset.id);
 const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', ...CRYPTO_ASSET_IDS];
-const SNAPSHOT_CURRENCIES = SUPPORTED_CURRENCIES;
 
 function sanitizeTwoDecimalInput(value) {
   const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');
@@ -377,22 +376,6 @@ function PlatformPickerModal({
   );
 }
 
-function convertCurrencyToCurrency(value, fromCurrency, toCurrency, prices) {
-  if (fromCurrency === toCurrency) return Number(value) || 0;
-  const usdValue = convertCurrencyToUSD(value, fromCurrency, prices);
-  return usdValue != null ? convertUSDToCurrency(usdValue, toCurrency, prices) : null;
-}
-
-function buildCurrencyTotalsSnapshot(total, currency, prices) {
-  return SNAPSHOT_CURRENCIES.reduce((snapshot, targetCurrency) => {
-    const converted = convertCurrencyToCurrency(total, currency, targetCurrency, prices);
-    if (converted != null && Number.isFinite(converted)) {
-      snapshot[targetCurrency] = converted;
-    }
-    return snapshot;
-  }, {});
-}
-
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { holdings, addHolding, reassignSourcePlatform } = usePortfolio();
@@ -430,9 +413,7 @@ export default function AddInvestmentScreen({ navigation }) {
     ]));
   }, [defaultInvestmentPlatform, holdings, investmentPlatforms]);
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
-  const isUsdAsset = selectedAsset?.id === 'usd';
   const isBaseCurrencyAsset = selectedAsset?.id === activeBaseAssetId;
-  const shouldCaptureLocalCost = isBaseCurrencyAsset || isUsdAsset;
   const baseAssetManualRateInfo = language === 'en'
     ? `For the ${baseCurrency} base asset, the purchase rate is entered manually in the local currency.`
     : `${baseCurrency} bazli varlikta alis kuru yerel para birimi uzerinden manuel girilir.`;
@@ -444,8 +425,6 @@ export default function AddInvestmentScreen({ navigation }) {
     () => getLocalCurrencyOptions(localCurrency, baseCurrency),
     [baseCurrency, localCurrency]
   );
-  const buyPriceCurrency = isBaseCurrencyAsset ? localCurrency : priceCurrency;
-
   const pickerAssets = useMemo(
     () =>
       HOME_ASSET_IDS
@@ -498,8 +477,6 @@ export default function AddInvestmentScreen({ navigation }) {
     : (parseFloat(buyPrice) || 0);
   const buyPriceUSD = isBaseCurrencyAsset
     ? (currentMarketPriceUSD ?? convertCurrencyToUSD(buyPriceNumber, localCurrency, prices))
-    : isUsdAsset
-    ? 1
     : convertCurrencyToUSD(
       buyPriceNumber,
       priceCurrency,
@@ -508,17 +485,10 @@ export default function AddInvestmentScreen({ navigation }) {
   const amountNumber = parseFloat(amount) || 0;
   const totalCostUSD = amountNumber * buyPriceUSD;
   const enteredTotalCost = amountNumber * buyPriceNumber;
-  const snapshotSourceCurrency = shouldCaptureLocalCost ? buyPriceCurrency : priceCurrency;
-  const snapshotSourceTotal = amountNumber * buyPriceNumber;
-  const buyCurrencyTotals = snapshotSourceTotal > 0
-    ? buildCurrencyTotalsSnapshot(snapshotSourceTotal, snapshotSourceCurrency, prices)
-    : null;
-  const totalCostLocal = shouldCaptureLocalCost
-    ? convertCurrencyToCurrency(enteredTotalCost, buyPriceCurrency, localCurrency, prices)
+  const totalCostLocal = isBaseCurrencyAsset
+    ? enteredTotalCost
     : convertUSDToCurrency(totalCostUSD, localCurrency, prices);
-  const totalCostPreviewUSD = shouldCaptureLocalCost
-    ? convertCurrencyToUSD(enteredTotalCost, buyPriceCurrency, prices)
-    : totalCostUSD;
+  const totalCostPreviewUSD = totalCostUSD;
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
   const selectedSourcePlatform = sourcePlatform || defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM;
@@ -553,8 +523,8 @@ export default function AddInvestmentScreen({ navigation }) {
       let buyFxLocalPerUSD = null;
       let buyLocalTotal = null;
 
-      if (shouldCaptureLocalCost) {
-        buyLocalCurrency = isBaseCurrencyAsset ? localCurrency : priceCurrency;
+      if (isBaseCurrencyAsset) {
+        buyLocalCurrency = localCurrency;
         buyFxLocalPerUSD = buyPriceNumber;
 
         if (buyFxLocalPerUSD == null) {
@@ -577,8 +547,6 @@ export default function AddInvestmentScreen({ navigation }) {
         amount: amountNumber,
         buyPriceUSD,
         baseCurrency,
-        buyPriceCurrency: snapshotSourceCurrency,
-        buyCurrencyTotals,
         buyLocalCurrency,
         buyFxLocalPerUSD,
         buyLocalTotal,
@@ -730,7 +698,7 @@ export default function AddInvestmentScreen({ navigation }) {
 
                 <View style={styles.inputWithSuffix}>
                   <View style={styles.inputPrefix}>
-                    <Text style={styles.inputPrefixText}>{getCurrencySymbol(buyPriceCurrency)}</Text>
+                    <Text style={styles.inputPrefixText}>{getCurrencySymbol(isBaseCurrencyAsset ? localCurrency : priceCurrency)}</Text>
                   </View>
                   <TextInput
                     style={[styles.input, styles.borderlessInput, styles.noLeftRadius]}

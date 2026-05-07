@@ -135,18 +135,22 @@ function CategoryRow({ label, primaryValue, secondaryValue, percent, color, icon
 const PLATFORM_COLORS = ['#16A34A', '#0EA5E9', '#8B5CF6', '#F59E0B', '#EF4444', '#14B8A6', '#6366F1'];
 
 function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
-  const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
-  if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
-    return snapshotBaseCost;
+  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
+  if (holding.assetId === activeBaseAssetId) {
+    return holding.amount || 0;
   }
 
   return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);
 }
 
-function getHoldingCostLocalValue(holding, { localCurrency, prices }) {
-  const snapshotLocalCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[localCurrency];
-  if (typeof snapshotLocalCost === 'number' && Number.isFinite(snapshotLocalCost)) {
-    return snapshotLocalCost;
+function getHoldingCostLocalValue(holding, { localCurrency, baseCurrency, prices }) {
+  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
+  if (
+    holding.assetId === activeBaseAssetId &&
+    holding.buyLocalCurrency === localCurrency &&
+    typeof holding.buyLocalTotal === 'number'
+  ) {
+    return holding.buyLocalTotal;
   }
 
   return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), localCurrency, prices);
@@ -155,10 +159,6 @@ function getHoldingCostLocalValue(holding, { localCurrency, prices }) {
 function getHoldingBuyLabel(holding, { activeBaseAssetId, baseCurrency, prices, t }) {
   if (holding.assetId === activeBaseAssetId && holding.buyLocalCurrency && holding.buyFxLocalPerUSD != null) {
     return `${t('buy_rate_label')}: 1 ${baseCurrency} = ${formatCurrency(holding.buyFxLocalPerUSD, holding.buyLocalCurrency)}`;
-  }
-
-  if (holding.buyLocalCurrency && holding.buyFxLocalPerUSD != null) {
-    return `${t('buy_price')}: ${formatCurrency(holding.buyFxLocalPerUSD, holding.buyLocalCurrency)}`;
   }
 
   return `${t('buy_price')}: ${formatCurrency(convertUSDToCurrency(holding.buyPriceUSD, baseCurrency, prices), baseCurrency)}`;
@@ -179,6 +179,7 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
   const currentLocal = convertUSDToCurrency(holding.currentUSD || 0, localCurrency, prices);
   const costLocal = getHoldingCostLocalValue(holding, {
     localCurrency,
+    baseCurrency,
     prices,
   });
   const buyLabel = getHoldingBuyLabel(holding, {
@@ -290,6 +291,7 @@ export default function PortfolioScreen({ navigation }) {
   const totalCostLocal = enrichedHoldings.reduce(
     (sum, holding) => sum + (getHoldingCostLocalValue(holding, {
       localCurrency,
+      baseCurrency,
       prices,
     }) || 0),
     0
@@ -555,6 +557,7 @@ export default function PortfolioScreen({ navigation }) {
               const groupCostLocalValue = groupRows.reduce(
                 (sum, holding) => sum + (getHoldingCostLocalValue(holding, {
                   localCurrency,
+                  baseCurrency,
                   prices,
                 }) || 0),
                 0
@@ -617,6 +620,7 @@ export default function PortfolioScreen({ navigation }) {
                         });
                         const transactionCostLocal = getHoldingCostLocalValue(h, {
                           localCurrency,
+                          baseCurrency,
                           prices,
                         });
 

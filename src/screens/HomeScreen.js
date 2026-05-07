@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,13 +21,15 @@ import { formatUSD, formatPercent } from '../utils/formatters';
 import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
 import { PREDEFINED_ASSETS, getAssetEmoji } from '../utils/assets';
 
-function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag }) {
+function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag, imageUrl }) {
   const isPositive = change >= 0;
 
   return (
     <View style={styles.rateCard}>
       <View style={[styles.rateIcon, { backgroundColor: iconBg || Colors.accentLight }]}>
-        {flag ? (
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.rateLogo} resizeMode="contain" />
+        ) : flag ? (
           <Text style={styles.rateFlag}>{flag}</Text>
         ) : (
           <Ionicons name={icon} size={20} color={iconColor || Colors.primary} />
@@ -366,7 +369,7 @@ export default function HomeScreen() {
                       icon="logo-bitcoin"
                       iconColor={asset.color}
                       iconBg={Colors.accentLight}
-                      flag={asset.emoji}
+                      imageUrl={asset.iconUrl}
                     />
                   );
                 })}
@@ -532,6 +535,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   rateFlag: { fontSize: 22 },
+  rateLogo: { width: 24, height: 24, borderRadius: 12 },
   rateInfo: { flex: 1 },
   rateLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   rateSubLabel: { fontSize: 12, color: Colors.textLight, marginTop: 1 },

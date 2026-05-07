@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,22 @@ import { useSettings } from '../context/SettingsContext';
 import { formatPercent, formatCrypto, formatDate } from '../utils/formatters';
 import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
 import { DEFAULT_INVESTMENT_PLATFORM, getPlatformDisplayName } from '../utils/platforms';
+import { getAssetById } from '../utils/assets';
+
+function AssetIcon({ assetId, iconUrl, emoji, size = 26 }) {
+  const resolvedIconUrl = iconUrl || getAssetById(assetId)?.iconUrl;
+  if (resolvedIconUrl) {
+    return (
+      <Image
+        source={{ uri: resolvedIconUrl }}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  return <Text style={{ fontSize: Math.round(size * 0.8) }}>{emoji}</Text>;
+}
 
 function DonutChart({ data, total, totalFormatted, size = 180, emptyLabel = '-', totalLabel = 'Total' }) {
   const radius = size / 2 - 20;
@@ -183,7 +200,7 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
       activeOpacity={0.75}
     >
       <View style={[styles.holdingEmoji, { backgroundColor: holding.color + '20' }]}>
-        <Text style={{ fontSize: 20 }}>{holding.emoji}</Text>
+        <AssetIcon assetId={holding.assetId} iconUrl={holding.iconUrl} emoji={holding.emoji} size={26} />
       </View>
 
       <View style={styles.holdingInfo}>
@@ -548,7 +565,7 @@ export default function PortfolioScreen({ navigation }) {
                 <View key={g.assetId} style={styles.groupCard}>
                   <View style={styles.groupHeader}>
                     <View style={[styles.groupEmoji, { backgroundColor: g.color + '20' }]}>
-                      <Text style={{ fontSize: 22 }}>{g.emoji}</Text>
+                      <AssetIcon assetId={g.assetId} iconUrl={g.iconUrl} emoji={g.emoji} size={30} />
                     </View>
                     <View style={styles.groupInfo}>
                       <Text style={styles.groupName}>{g.assetName}</Text>

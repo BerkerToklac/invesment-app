@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -130,6 +131,20 @@ function DatePickerField({ value, onChange }) {
   );
 }
 
+function AssetIcon({ asset, size = 28 }) {
+  if (asset?.iconUrl) {
+    return (
+      <Image
+        source={{ uri: asset.iconUrl }}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  return <Text style={{ fontSize: Math.round(size * 0.8) }}>{asset?.emoji}</Text>;
+}
+
 function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('forex');
@@ -222,7 +237,7 @@ function AssetPickerModal({ visible, onClose, onSelect, currentId, assets, t }) 
               }}
             >
               <View style={[styles.assetItemEmoji, { backgroundColor: item.color + '20' }]}>
-                <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
+                <AssetIcon asset={item} size={30} />
               </View>
               <View style={styles.assetItemInfo}>
                 <Text style={styles.assetItemName}>{item.name}</Text>
@@ -538,6 +553,7 @@ export default function AddInvestmentScreen({ navigation }) {
         assetName: selectedAsset.name,
         type: selectedAsset.type,
         emoji: selectedAsset.emoji,
+        iconUrl: selectedAsset.iconUrl,
         color: selectedAsset.color,
         buyDate: toIstanbulDateStr(date),
         amount: amountNumber,
@@ -588,7 +604,7 @@ export default function AddInvestmentScreen({ navigation }) {
               {selectedAsset ? (
                 <View style={styles.assetPickerSelected}>
                   <View style={[styles.assetPickerEmoji, { backgroundColor: selectedAsset.color + '20' }]}>
-                    <Text style={{ fontSize: 20 }}>{selectedAsset.emoji}</Text>
+                    <AssetIcon asset={selectedAsset} size={26} />
                   </View>
                   <View>
                     <Text style={styles.assetPickerName}>{selectedAsset.name}</Text>

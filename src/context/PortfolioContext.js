@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../services/apiClient';
 import { useAuth } from './AuthContext';
+import { getAssetById } from '../utils/assets';
 
 const PortfolioContext = createContext(null);
 
@@ -142,6 +143,7 @@ export const PortfolioProvider = ({ children }) => {
             currentPrice,
             color: h.color || '#22C55E',
             emoji: h.emoji || '📊',
+            iconUrl: h.iconUrl || getAssetById(h.assetId)?.iconUrl,
             type: h.type || 'other',
           };
         }

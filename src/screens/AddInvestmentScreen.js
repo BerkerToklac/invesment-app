@@ -395,7 +395,7 @@ function buildCurrencyTotalsSnapshot(total, currency, prices) {
 
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { addHolding, reassignSourcePlatform } = usePortfolio();
+  const { holdings, addHolding, reassignSourcePlatform } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
   const {
     localCurrency,
@@ -417,6 +417,18 @@ export default function AddInvestmentScreen({ navigation }) {
   const [sourcePlatform, setSourcePlatform] = useState(defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM);
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
+  const platformOptions = useMemo(() => {
+    const defaultPlatformName = defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM;
+    const holdingPlatforms = (holdings || [])
+      .map((holding) => holding.sourcePlatform)
+      .filter((platform) => typeof platform === 'string' && platform.trim());
+
+    return Array.from(new Set([
+      defaultPlatformName,
+      ...((investmentPlatforms || []).filter((platform) => typeof platform === 'string' && platform.trim())),
+      ...holdingPlatforms,
+    ]));
+  }, [defaultInvestmentPlatform, holdings, investmentPlatforms]);
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const isUsdAsset = selectedAsset?.id === 'usd';
   const isBaseCurrencyAsset = selectedAsset?.id === activeBaseAssetId;
@@ -456,6 +468,12 @@ export default function AddInvestmentScreen({ navigation }) {
   useEffect(() => {
     setPriceCurrency((current) => (priceCurrencyOptions.includes(current) ? current : localCurrency));
   }, [localCurrency, priceCurrencyOptions]);
+
+  useEffect(() => {
+    if (!sourcePlatform || !platformOptions.includes(sourcePlatform)) {
+      setSourcePlatform(platformOptions[0] || DEFAULT_INVESTMENT_PLATFORM);
+    }
+  }, [platformOptions, sourcePlatform]);
 
   useEffect(() => {
     if (!selectedAsset) return;
@@ -786,7 +804,7 @@ export default function AddInvestmentScreen({ navigation }) {
       <PlatformPickerModal
         visible={platformPickerVisible}
         onClose={() => setPlatformPickerVisible(false)}
-        platforms={investmentPlatforms || []}
+        platforms={platformOptions}
         selectedPlatform={sourcePlatform}
         defaultPlatform={defaultInvestmentPlatform}
         language={language}

@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
+
 const KEYS = {
   AUTH_USER: '@portfoy_auth_user',
   SETTINGS: '@portfoy_settings',
@@ -39,15 +41,13 @@ export const StorageService = {
   async getSettings() {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
     const defaults = {
-      displayCurrency: 'USD',
       localCurrency: 'TRY',
       baseCurrency: 'USD',
       language: 'tr',
-      showTRY: true,
       notifications: true,
-      investmentPlatforms: ['Kişisel Kasam'],
+      investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM],
     };
-    return data ? { ...defaults, ...JSON.parse(data), displayCurrency: 'USD' } : defaults;
+    return data ? { ...defaults, ...JSON.parse(data) } : defaults;
   },
 
   async saveSettings(settings) {

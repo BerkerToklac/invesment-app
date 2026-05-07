@@ -1,3 +1,5 @@
+import { CURRENCY_META } from './currency';
+
 export const PREDEFINED_ASSETS = [
   {
     id: 'gold-gram',
@@ -522,45 +524,14 @@ export const getAssetById = (id) => {
 };
 
 export const getLocalizedAssetName = (assetId, language = 'tr') => {
+  const currencyCode = typeof assetId === 'string' ? assetId.toUpperCase() : '';
+  const currencyMeta = CURRENCY_META[currencyCode];
+
+  if (currencyMeta) {
+    return language === 'en' ? currencyMeta.name : currencyMeta.localName;
+  }
+
   const names = {
-    usd: { tr: 'Dolar', en: 'Dollar' },
-    eur: { tr: 'Euro', en: 'Euro' },
-    gbp: { tr: 'Sterlin', en: 'Pound Sterling' },
-    jpy: { tr: 'Japon Yeni', en: 'Japanese Yen' },
-    cny: { tr: 'Çin Yuanı', en: 'Chinese Yuan' },
-    chf: { tr: 'İsviçre Frangı', en: 'Swiss Franc' },
-    aud: { tr: 'Avustralya Doları', en: 'Australian Dollar' },
-    cad: { tr: 'Kanada Doları', en: 'Canadian Dollar' },
-    hkd: { tr: 'Hong Kong Doları', en: 'Hong Kong Dollar' },
-    sgd: { tr: 'Singapur Doları', en: 'Singapore Dollar' },
-    inr: { tr: 'Hindistan Rupisi', en: 'Indian Rupee' },
-    krw: { tr: 'Güney Kore Wonu', en: 'South Korean Won' },
-    sek: { tr: 'İsveç Kronu', en: 'Swedish Krona' },
-    mxn: { tr: 'Meksika Pesosu', en: 'Mexican Peso' },
-    nzd: { tr: 'Yeni Zelanda Doları', en: 'New Zealand Dollar' },
-    nok: { tr: 'Norveç Kronu', en: 'Norwegian Krone' },
-    twd: { tr: 'Yeni Tayvan Doları', en: 'New Taiwan Dollar' },
-    brl: { tr: 'Brezilya Reali', en: 'Brazilian Real' },
-    zar: { tr: 'Güney Afrika Randı', en: 'South African Rand' },
-    pln: { tr: 'Polonya Zlotisi', en: 'Polish Zloty' },
-    try: { tr: 'Türk Lirası', en: 'Turkish Lira' },
-    dkk: { tr: 'Danimarka Kronu', en: 'Danish Krone' },
-    czk: { tr: 'Çek Korunası', en: 'Czech Koruna' },
-    huf: { tr: 'Macar Forinti', en: 'Hungarian Forint' },
-    ron: { tr: 'Rumen Leyi', en: 'Romanian Leu' },
-    bgn: { tr: 'Bulgar Levası', en: 'Bulgarian Lev' },
-    isk: { tr: 'İzlanda Kronu', en: 'Icelandic Krona' },
-    uah: { tr: 'Ukrayna Grivnası', en: 'Ukrainian Hryvnia' },
-    rsd: { tr: 'Sırp Dinarı', en: 'Serbian Dinar' },
-    all: { tr: 'Arnavutluk Leki', en: 'Albanian Lek' },
-    bam: { tr: 'Bosna-Hersek Markı', en: 'Bosnia-Herzegovina Convertible Mark' },
-    mkd: { tr: 'Makedon Dinarı', en: 'Macedonian Denar' },
-    mdl: { tr: 'Moldova Leyi', en: 'Moldovan Leu' },
-    gel: { tr: 'Gürcistan Larisi', en: 'Georgian Lari' },
-    amd: { tr: 'Ermeni Dramı', en: 'Armenian Dram' },
-    azn: { tr: 'Azerbaycan Manatı', en: 'Azerbaijani Manat' },
-    rub: { tr: 'Rus Rublesi', en: 'Russian Ruble' },
-    byn: { tr: 'Belarus Rublesi', en: 'Belarusian Ruble' },
     'gold-gram': { tr: 'Gram Altın', en: 'Gram Gold' },
     'silver-gram': { tr: 'Gram Gümüş', en: 'Gram Silver' },
     'gold-oz': { tr: 'Ons Altın', en: 'Gold Ounce' },

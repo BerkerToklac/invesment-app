@@ -17,7 +17,7 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
-import { CURRENCY_META, SUPPORTED_CURRENCIES, convertCurrencyToUSD, convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
 import { getAssetEmoji } from '../utils/assets';
 
 function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag }) {
@@ -64,41 +64,10 @@ function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel,
   );
 }
 
-function getHoldingCostBaseValue(holding, {
-  activeBaseAssetId,
-  baseCurrency,
-  prices,
-}) {
+function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
   const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
   if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
     return snapshotBaseCost;
-  }
-
-  if (
-    holding.buyLocalCurrency === baseCurrency &&
-    holding.buyLocalTotal != null
-  ) {
-    return holding.buyLocalTotal;
-  }
-
-  if (
-    holding.assetId === activeBaseAssetId &&
-    holding.buyLocalTotal != null
-  ) {
-    if (typeof holding.amount === 'number' && Number.isFinite(holding.amount)) {
-      return holding.amount;
-    }
-
-    if (typeof holding.buyFxLocalPerUSD === 'number' && holding.buyFxLocalPerUSD > 0) {
-      return holding.buyLocalTotal / holding.buyFxLocalPerUSD;
-    }
-  }
-
-  if (holding.buyLocalCurrency && holding.buyLocalTotal != null) {
-    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
-    if (costUSDFromLocal != null) {
-      return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
-    }
   }
 
   return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);
@@ -151,10 +120,8 @@ export default function HomeScreen() {
     : '--:--';
 
   const totalUSD = portfolioStats?.totalCurrentUSD || 0;
-  const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const totalCostBase = (holdings || []).reduce(
     (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
-      activeBaseAssetId,
       baseCurrency,
       prices,
     }) || 0),

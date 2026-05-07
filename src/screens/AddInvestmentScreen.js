@@ -32,6 +32,7 @@ import {
   getCurrencySymbol,
   getLocalCurrencyOptions,
 } from '../utils/currency';
+import { DEFAULT_INVESTMENT_PLATFORM, getPlatformDisplayName } from '../utils/platforms';
 
 const FOREX_ASSET_IDS = SUPPORTED_CURRENCIES.map((currency) => currency.toLowerCase());
 const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', 'btc', 'eth', 'bnb', 'xrp'];
@@ -52,7 +53,7 @@ function DatePickerField({ value, onChange }) {
   const [tempDate, setTempDate] = useState(value);
   const pickerLocale = language === 'en' ? 'en-US' : 'tr-TR';
 
-  const formatted = formatDateLong(value);
+  const formatted = formatDateLong(value, language);
 
   const handleChange = (event, selected) => {
     if (Platform.OS === 'android') {
@@ -250,6 +251,7 @@ function PlatformPickerModal({
   platforms,
   selectedPlatform,
   defaultPlatform,
+  language,
   onSelect,
   onAdd,
   onDelete,
@@ -315,7 +317,7 @@ function PlatformPickerModal({
                   <Ionicons name="business-outline" size={18} color={Colors.primary} />
                 </View>
                 <View style={styles.platformItemCopy}>
-                  <Text style={styles.platformItemText}>{item}</Text>
+                  <Text style={styles.platformItemText}>{getPlatformDisplayName(item, language)}</Text>
                   {item === defaultPlatform ? (
                     <Text style={styles.platformItemSub}>{t('source_platform_default_locked')}</Text>
                   ) : null}
@@ -394,7 +396,7 @@ export default function AddInvestmentScreen({ navigation }) {
   const [date, setDate] = useState(new Date());
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
-  const [sourcePlatform, setSourcePlatform] = useState(defaultInvestmentPlatform || 'Kişisel Kasam');
+  const [sourcePlatform, setSourcePlatform] = useState(defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM);
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
@@ -483,7 +485,7 @@ export default function AddInvestmentScreen({ navigation }) {
     : totalCostUSD;
   const currentValueUSD = amountNumber * (currentMarketPriceUSD || 0);
   const currentValueLocal = convertUSDToCurrency(currentValueUSD, localCurrency, prices);
-  const selectedSourcePlatform = sourcePlatform || defaultInvestmentPlatform || 'Kişisel Kasam';
+  const selectedSourcePlatform = sourcePlatform || defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM;
 
   const autofillPrice = () => {
     if (!currentMarketPrice) {
@@ -611,7 +613,7 @@ export default function AddInvestmentScreen({ navigation }) {
                     </View>
                     <View style={styles.platformPickerTextWrap}>
                       <Text style={[styles.platformPickerText, !sourcePlatform && styles.platformPickerPlaceholder]}>
-                        {sourcePlatform || t('source_platform_select')}
+                        {sourcePlatform ? getPlatformDisplayName(sourcePlatform, language) : t('source_platform_select')}
                       </Text>
                       <Text style={styles.platformPickerHint}>{t('source_platform_hint')}</Text>
                     </View>
@@ -768,6 +770,7 @@ export default function AddInvestmentScreen({ navigation }) {
         platforms={investmentPlatforms || []}
         selectedPlatform={sourcePlatform}
         defaultPlatform={defaultInvestmentPlatform}
+        language={language}
         onSelect={setSourcePlatform}
         onAdd={addInvestmentPlatform}
         onDelete={async (platformName) => {

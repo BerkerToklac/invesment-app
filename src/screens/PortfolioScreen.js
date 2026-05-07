@@ -18,7 +18,8 @@ import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatPercent, formatCrypto, formatDate } from '../utils/formatters';
-import { convertCurrencyToUSD, convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { convertUSDToCurrency, formatCurrency } from '../utils/currency';
+import { DEFAULT_INVESTMENT_PLATFORM, getPlatformDisplayName } from '../utils/platforms';
 
 function DonutChart({ data, total, totalFormatted, size = 180, emptyLabel = '-', totalLabel = 'Total' }) {
   const radius = size / 2 - 20;
@@ -114,70 +115,24 @@ function CategoryRow({ label, primaryValue, secondaryValue, percent, color, icon
   );
 }
 
-function getHoldingCostBaseValue(holding, {
-  activeBaseAssetId,
-  baseCurrency,
-  prices,
-}) {
+const PLATFORM_COLORS = ['#16A34A', '#0EA5E9', '#8B5CF6', '#F59E0B', '#EF4444', '#14B8A6', '#6366F1'];
+
+function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
   const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
   if (typeof snapshotBaseCost === 'number' && Number.isFinite(snapshotBaseCost)) {
     return snapshotBaseCost;
   }
 
-  if (
-    holding.buyLocalCurrency === baseCurrency &&
-    holding.buyLocalTotal != null
-  ) {
-    return holding.buyLocalTotal;
-  }
-
-  if (
-    holding.assetId === activeBaseAssetId &&
-    holding.buyLocalTotal != null
-  ) {
-    if (typeof holding.amount === 'number' && Number.isFinite(holding.amount)) {
-      return holding.amount;
-    }
-
-    if (typeof holding.buyFxLocalPerUSD === 'number' && holding.buyFxLocalPerUSD > 0) {
-      return holding.buyLocalTotal / holding.buyFxLocalPerUSD;
-    }
-  }
-
-  if (holding.buyLocalCurrency && holding.buyLocalTotal != null) {
-    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
-    if (costUSDFromLocal != null) {
-      return convertUSDToCurrency(costUSDFromLocal, baseCurrency, prices);
-    }
-  }
-
-  return convertUSDToCurrency(holding.costUSD || 0, baseCurrency, prices);
+  return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), baseCurrency, prices);
 }
 
-function getHoldingCostLocalValue(holding, {
-  localCurrency,
-  prices,
-}) {
+function getHoldingCostLocalValue(holding, { localCurrency, prices }) {
   const snapshotLocalCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[localCurrency];
   if (typeof snapshotLocalCost === 'number' && Number.isFinite(snapshotLocalCost)) {
     return snapshotLocalCost;
   }
 
-  if (
-    holding.buyLocalCurrency === localCurrency &&
-    holding.buyLocalTotal != null
-  ) {
-    return holding.buyLocalTotal;
-  }
-
-  if (holding.buyLocalCurrency && holding.buyLocalTotal != null) {
-    const costUSDFromLocal = convertCurrencyToUSD(holding.buyLocalTotal, holding.buyLocalCurrency, prices);
-    if (costUSDFromLocal != null) {
-      return convertUSDToCurrency(costUSDFromLocal, localCurrency, prices);
-    }
-  }
-
-  return convertUSDToCurrency(holding.costUSD || 0, localCurrency, prices);
+  return convertUSDToCurrency((holding.amount || 0) * (holding.buyPriceUSD || 0), localCurrency, prices);
 }
 
 function getHoldingBuyLabel(holding, { activeBaseAssetId, baseCurrency, prices, t }) {
@@ -193,12 +148,11 @@ function getHoldingBuyLabel(holding, { activeBaseAssetId, baseCurrency, prices, 
 }
 
 function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) {
-  const { t } = useSettings();
+  const { language, t } = useSettings();
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const currentBase = convertUSDToCurrency(holding.currentUSD || 0, baseCurrency, prices);
   const currentPriceBase = convertUSDToCurrency(holding.currentPrice || 0, baseCurrency, prices);
   const costBase = getHoldingCostBaseValue(holding, {
-    activeBaseAssetId,
     baseCurrency,
     prices,
   });
@@ -260,7 +214,7 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
         </Text>
         {holding.sourcePlatform ? (
           <Text style={styles.holdingMeta}>
-            {t('source_platform')}: {holding.sourcePlatform}
+            {t('source_platform')}: {getPlatformDisplayName(holding.sourcePlatform, language)}
           </Text>
         ) : null}
       </View>
@@ -272,7 +226,7 @@ export default function PortfolioScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { prices, refreshing, refresh } = useMarket();
   const { holdings, computeStats, getGroupedHoldings, deleteHolding } = usePortfolio();
-  const { localCurrency, baseCurrency, t } = useSettings();
+  const { localCurrency, baseCurrency, language, t } = useSettings();
   const [showByAsset, setShowByAsset] = useState(true);
 
   const getAssetPrice = (id) => {
@@ -306,7 +260,6 @@ export default function PortfolioScreen({ navigation }) {
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const totalCostBase = enrichedHoldings.reduce(
     (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
-      activeBaseAssetId,
       baseCurrency,
       prices,
     }) || 0),
@@ -350,6 +303,29 @@ export default function PortfolioScreen({ navigation }) {
       }))
       .sort((a, b) => b.totalUSD - a.totalUSD);
   }, [baseCurrency, grouped, localCurrency, prices, t, totalCurrentUSD]);
+  const platformData = useMemo(() => {
+    const platformTotals = {};
+
+    enrichedHoldings.forEach((holding) => {
+      const platform = typeof holding.sourcePlatform === 'string' && holding.sourcePlatform.trim()
+        ? holding.sourcePlatform.trim()
+        : DEFAULT_INVESTMENT_PLATFORM;
+      platformTotals[platform] = (platformTotals[platform] || 0) + (holding.currentUSD || 0);
+    });
+
+    return Object.entries(platformTotals)
+      .map(([platform, totalUSD], index) => ({
+        key: platform,
+        label: getPlatformDisplayName(platform, language),
+        color: PLATFORM_COLORS[index % PLATFORM_COLORS.length],
+        icon: 'business-outline',
+        totalUSD,
+        percent: totalCurrentUSD > 0 ? (totalUSD / totalCurrentUSD) * 100 : 0,
+        totalBase: formatCurrency(convertUSDToCurrency(totalUSD, baseCurrency, prices), baseCurrency),
+        totalLocal: formatCurrency(convertUSDToCurrency(totalUSD, localCurrency, prices), localCurrency),
+      }))
+      .sort((a, b) => b.totalUSD - a.totalUSD);
+  }, [baseCurrency, enrichedHoldings, language, localCurrency, prices, totalCurrentUSD]);
   const isPositive = totalPLBase >= 0;
   const totalPLPercentBase = totalCostBase > 0 ? (totalPLBase / totalCostBase) * 100 : 0;
 
@@ -473,6 +449,26 @@ export default function PortfolioScreen({ navigation }) {
           ))}
         </View>
 
+        {platformData.length ? (
+          <View style={styles.categoryCard}>
+            <View style={styles.categoryCardHeader}>
+              <Text style={styles.chartTitle}>{t('platform_distribution')}</Text>
+              <Text style={styles.categoryCardSub}>{t('share_of_portfolio')}</Text>
+            </View>
+            {platformData.map((item) => (
+              <CategoryRow
+                key={item.key}
+                label={item.label}
+                primaryValue={item.totalBase}
+                secondaryValue={item.totalLocal}
+                percent={item.percent}
+                color={item.color}
+                icon={item.icon}
+              />
+            ))}
+          </View>
+        ) : null}
+
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>{t('distribution')}</Text>
           <View style={styles.chartContent}>
@@ -524,7 +520,6 @@ export default function PortfolioScreen({ navigation }) {
               const groupRows = enrichedHoldings.filter((h) => h.assetId === g.assetId);
               const groupCostBaseValue = groupRows.reduce(
                 (sum, holding) => sum + (getHoldingCostBaseValue(holding, {
-                  activeBaseAssetId,
                   baseCurrency,
                   prices,
                 }) || 0),
@@ -595,7 +590,6 @@ export default function PortfolioScreen({ navigation }) {
                     <View key={h.id} style={styles.subRow}>
                       {(() => {
                         const transactionCostBase = getHoldingCostBaseValue(h, {
-                          activeBaseAssetId,
                           baseCurrency,
                           prices,
                         });
@@ -642,7 +636,7 @@ export default function PortfolioScreen({ navigation }) {
                         </Text>
                         {h.sourcePlatform ? (
                           <Text style={styles.subBuyPrice}>
-                            {t('source_platform')}: {h.sourcePlatform}
+                            {t('source_platform')}: {getPlatformDisplayName(h.sourcePlatform, language)}
                           </Text>
                         ) : null}
                         {h.assetId === activeBaseAssetId && h.buyLocalCurrency === localCurrency && h.buyLocalTotal != null ? (() => {

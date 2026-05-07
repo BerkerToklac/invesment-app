@@ -4,7 +4,7 @@
 
 Backend karşılığı:
 
-- [project1-be](C:/Users/mertc/Desktop/Dev/project1-be/README.md)
+- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)
 
 Bu istemci backend tarafında şu alanlarla konuşur:
 
@@ -16,22 +16,25 @@ Bu istemci backend tarafında şu alanlarla konuşur:
 - e-posta kodu ile giriş
 - döviz, kıymetli maden ve kripto fiyatları
 - portföy CRUD
-- baz para birimi ve görüntüleme para birimi ayarları
+- onboarding sırasında baz para birimi ve yerel para birimi seçimi
+- ayarlardan baz / yerel para birimini tek popup içinde değiştirme
+- para birimi değişiminde portföy sıfırlama uyarısı
+- alış kaynağı / platform takibi
+- kullanıcı tanımlı platform listesi
+- kategori ve platform dağılımı
 - support iletişim bilgisi
 - Türkçe / İngilizce dil desteği
 
 Bugün desteklenen para birimleri:
 
-- `TRY`
-- `EUR`
-- `GBP`
-- `USD`
+- Top 20 dünya para birimi: `USD`, `EUR`, `JPY`, `GBP`, `CNY`, `CHF`, `AUD`, `CAD`, `HKD`, `SGD`, `INR`, `KRW`, `SEK`, `MXN`, `NZD`, `NOK`, `TWD`, `BRL`, `ZAR`, `PLN`
+- Türkiye ve Avrupa ekleri: `TRY`, `DKK`, `CZK`, `HUF`, `RON`, `BGN`, `ISK`, `UAH`, `RSD`, `ALL`, `BAM`, `MKD`, `MDL`, `GEL`, `AMD`, `AZN`, `RUB`, `BYN`
 
 Bugün öne çıkan piyasa varlıkları:
 
-- forex: `USD`, `EUR`, `GBP`
+- forex: desteklenen para birimi listesindeki tüm dövizler
 - metaller: gram / ons altın, gram / ons gümüş
-- kripto: `BTC`, `ETH`, `BNB`, `XRP`
+- kripto: `BTC`, `ETH`, `BNB`, `XRP`, `SOL`, `USDT`, `PAXG`, `XAUT`
 
 ## Para Birimi Modeli
 
@@ -41,18 +44,38 @@ Uygulamada iki ayrı para birimi kavramı vardır:
 
 - portföyün ana referans para birimidir
 - toplam değer, maliyet ve kar/zarar bu para birimine göre ana eksende yorumlanır
+- daha tutarlı uzun vadeli takip için görece düşük enflasyonlu bir para birimi seçilmesi önerilir
 - değiştirildiğinde mevcut portföy sıfırlanır
 
-### Görüntüleme Para Birimi
+### Yerel Para Birimi / Display / Local Currency
 
 - rakamların ekranda hangi para biriminde gösterileceğini belirler
-- ana portföy mantığını değil, sunumu değiştirir
-- bazı base-currency bağlı kayıtlar etkilenebileceği için uygulama gerektiğinde kullanıcıyı uyarır
+- baz para birimi varlığı eklenirken alış kuru bu para birimi üzerinden girilir
+- değiştirildiğinde mevcut portföy sıfırlanır
 
 Önemli not:
 
 - sistemin normalize hesap omurgası halen USD verisi üzerinden çalışır
-- `baseCurrency`, bugün tam anlamıyla alternatif bir hesap motoru değil; kayıt bağlamı ve ana gösterim referansı olarak kullanılır
+- yeni işlemlerde alış maliyeti, işlem anındaki çapraz kur snapshot'larıyla desteklenen para birimlerinde saklanır
+- eski kayıt fallback'leri temizlenmiştir; DB reset sonrası beklenen veri modeli yeni snapshot alanlarıdır
+
+## Platform / Alış Kaynağı Modeli
+
+Yatırım eklerken kullanıcı varlığı nereden aldığını veya nerede tuttuğunu seçebilir.
+
+- varsayılan platform `Kişisel Kasam` değeridir
+- İngilizce arayüzde varsayılan platform `Personal Safe` olarak gösterilir
+- varsayılan platform silinemez
+- kullanıcı yeni platform ekleyebilir
+- kullanıcı eklediği platformları silebilir
+- silinen platforma bağlı mevcut yatırımlar varsayılan platforma taşınır
+
+Örnek platformlar:
+
+- kişisel kasa
+- A Bankası
+- B Bankası
+- C finans platformu
 
 ## API Endpoint'leri
 
@@ -69,14 +92,14 @@ Uygulamada iki ayrı para birimi kavramı vardır:
 | `POST` | `/investment/portfolio` | Evet | Yeni kalem ekle |
 | `PUT` | `/investment/portfolio/:id` | Evet | Kalem güncelle |
 | `DELETE` | `/investment/portfolio/:id` | Evet | Kalem sil |
-| `DELETE` | `/investment/portfolio/base/:currency` | Evet | Belirli base currency kayıtlarını sil |
+| `PUT` | `/investment/portfolio/source-platform/reassign` | Evet | Platforma bağlı kayıtları başka platforma taşı |
 | `DELETE` | `/investment/portfolio/all` | Evet | Tüm portföyü temizle |
 
 ## Frontend-Backend Entegrasyonu
 
 Backend istemcisi:
 
-- [src/services/apiClient.js](C:/Users/mertc/Desktop/Dev/invesment-app/src/services/apiClient.js)
+- [src/services/apiClient.js](/Users/airm4/Desktop/dev/invesment-app/src/services/apiClient.js)
 
 Davranış:
 
@@ -106,7 +129,7 @@ endpoint'i üzerinden çeker.
 
 Uygulama versiyonu:
 
-- [app.json](C:/Users/mertc/Desktop/Dev/invesment-app/app.json)
+- [app.json](/Users/airm4/Desktop/dev/invesment-app/app.json)
 
 Ayarlar ekranındaki version bilgisi buradan okunur.
 
@@ -166,10 +189,13 @@ npm run web
 
 ## Geliştirme Notları
 
-- Ayarlar ekranındaki baz / görüntüleme para birimi davranışları ürün açısından kritiktir; backend davranışıyla uyumlu tutulmalıdır.
+- Ayarlar ekranındaki baz / yerel para birimi davranışları ürün açısından kritiktir; değişiklik mevcut portföyü sıfırlar.
 - Base currency asset'i için yatırım ekleme ekranında özel local-rate girişi vardır.
-- Ana sayfa ve portföy ekranları artık base currency'yi ana gösterim, display currency'yi ikincil gösterim olarak kullanır.
+- Ana sayfa ve portföy ekranları base currency'yi ana gösterim, local currency'yi ikincil gösterim olarak kullanır.
+- Döviz isimleri ana ekran ve varlık seçici arasında `CURRENCY_META` üzerinden ortaklaştırılmıştır.
+- Platform adı veride canonical olarak saklanır; varsayılan platform İngilizce arayüzde display helper ile `Personal Safe` görünür.
+- DB reset sonrası eski portföy fallback'lerine güvenilmez; yeni kayıtlar `buyCurrencyTotals` snapshot'ı ile oluşturulmalıdır.
 
 ## İlgili Repo
 
-- [project1-be](C:/Users/mertc/Desktop/Dev/project1-be/README.md)
+- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)

@@ -34,7 +34,7 @@ export const PortfolioProvider = ({ children }) => {
       setLoading(true);
       const data = await apiClient.get('/investment/portfolio');
       // Normalize _id → id so the rest of the app keeps using h.id
-      setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id, baseCurrency: h.baseCurrency || 'USD' })));
+      setHoldings((data.holdings || []).map((h) => ({ ...h, id: h._id })));
     } catch (e) {
       console.error('Load holdings error:', e);
     } finally {

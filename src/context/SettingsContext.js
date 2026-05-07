@@ -3,18 +3,27 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { StorageService } from '../services/storage';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { translate } from '../utils/i18n';
+import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
 
 const SettingsContext = createContext(null);
 
 const DEFAULT_SETTINGS = {
-  displayCurrency: 'USD',
   localCurrency: 'TRY',
   baseCurrency: 'USD',
   language: 'tr',
   notifications: true,
-  investmentPlatforms: ['Kişisel Kasam'],
+  investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM],
 };
-const DEFAULT_INVESTMENT_PLATFORM = 'Kişisel Kasam';
+
+function sanitizeSettings(settings) {
+  return {
+    localCurrency: settings.localCurrency,
+    baseCurrency: settings.baseCurrency,
+    language: settings.language,
+    notifications: settings.notifications,
+    investmentPlatforms: settings.investmentPlatforms,
+  };
+}
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -24,7 +33,7 @@ export const SettingsProvider = ({ children }) => {
   const loadSettings = useCallback(async () => {
     try {
       const stored = await StorageService.getSettings();
-      const nextSettings = { ...DEFAULT_SETTINGS, ...(stored || {}) };
+      const nextSettings = sanitizeSettings({ ...DEFAULT_SETTINGS, ...(stored || {}) });
       if (!SUPPORTED_CURRENCIES.includes(nextSettings.localCurrency)) {
         nextSettings.localCurrency = DEFAULT_SETTINGS.localCurrency;
       }
@@ -57,12 +66,12 @@ export const SettingsProvider = ({ children }) => {
       ...DEFAULT_SETTINGS,
       ...settingsRef.current,
       ...updates,
-      displayCurrency: 'USD',
     };
-    settingsRef.current = nextSettings;
-    setSettings(nextSettings);
-    await StorageService.saveSettings(nextSettings);
-    return nextSettings;
+    const sanitizedSettings = sanitizeSettings(nextSettings);
+    settingsRef.current = sanitizedSettings;
+    setSettings(sanitizedSettings);
+    await StorageService.saveSettings(sanitizedSettings);
+    return sanitizedSettings;
   }, []);
 
   const setCurrencyPreferences = useCallback(async ({ baseCurrency, localCurrency }) => {
@@ -119,7 +128,6 @@ export const SettingsProvider = ({ children }) => {
   const value = useMemo(() => ({
     settings,
     loading,
-    displayCurrency: 'USD',
     localCurrency: settings.localCurrency || 'TRY',
     baseCurrency: settings.baseCurrency || 'USD',
     language: settings.language || 'tr',

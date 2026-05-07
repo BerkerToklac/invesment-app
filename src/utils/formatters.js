@@ -63,8 +63,8 @@ export const formatDate = (dateString) => {
   });
 };
 
-export const formatDateLong = (date) =>
-  new Intl.DateTimeFormat('tr-TR', {
+export const formatDateLong = (date, language = 'tr') =>
+  new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'tr-TR', {
     timeZone: TZ,
     day: 'numeric',
     month: 'long',

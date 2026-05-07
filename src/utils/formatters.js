@@ -1,6 +1,6 @@
 export const formatUSD = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '$0.00';
-  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 8);
   return `$${Number(value).toLocaleString('en-US', {
     minimumFractionDigits: safeDecimals,
     maximumFractionDigits: safeDecimals,
@@ -9,7 +9,7 @@ export const formatUSD = (value, decimals = 2) => {
 
 export const formatTRY = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '₺0,00';
-  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 8);
   return `₺${Number(value).toLocaleString('tr-TR', {
     minimumFractionDigits: safeDecimals,
     maximumFractionDigits: safeDecimals,
@@ -18,7 +18,7 @@ export const formatTRY = (value, decimals = 2) => {
 
 export const formatEUR = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '€0,00';
-  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 8);
   return `€${Number(value).toLocaleString('de-DE', {
     minimumFractionDigits: safeDecimals,
     maximumFractionDigits: safeDecimals,
@@ -27,7 +27,7 @@ export const formatEUR = (value, decimals = 2) => {
 
 export const formatGBP = (value, decimals = 2) => {
   if (value === null || value === undefined || isNaN(value)) return '£0.00';
-  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 8);
   return `£${Number(value).toLocaleString('en-GB', {
     minimumFractionDigits: safeDecimals,
     maximumFractionDigits: safeDecimals,

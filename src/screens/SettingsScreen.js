@@ -202,8 +202,8 @@ export default function SettingsScreen() {
 
     const applyChange = async ({ resetPortfolio }) => {
       try {
-        if (resetPortfolio) await clearPortfolio();
         await setCurrencyPreferences({ baseCurrency: draftBaseCurrency, localCurrency: draftLocalCurrency });
+        if (resetPortfolio) await clearPortfolio();
         setCurrencyModalVisible(false);
         Alert.alert(t('success'), resetPortfolio ? t('currency_preferences_changed_reset') : t('currency_preferences_changed'));
       } catch (err) {

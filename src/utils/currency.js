@@ -134,7 +134,7 @@ export function formatCurrency(value, currency, decimals = 2) {
   const meta = CURRENCY_META[upperCurrency] || CURRENCY_META.USD;
   if (value === null || value === undefined || isNaN(value)) return `${meta.symbol}0.00`;
 
-  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 2);
+  const safeDecimals = Math.min(Math.max(Number(decimals) || 2, 0), 8);
   return `${meta.symbol}${Number(value).toLocaleString(meta.locale, {
     minimumFractionDigits: safeDecimals,
     maximumFractionDigits: safeDecimals,

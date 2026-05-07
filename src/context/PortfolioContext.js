@@ -5,6 +5,15 @@ import { getAssetById } from '../utils/assets';
 
 const PortfolioContext = createContext(null);
 
+function getHoldingCostUSD(holding) {
+  const activeBaseAssetId = (holding.baseCurrency || 'USD').toLowerCase();
+  if (holding.assetId === activeBaseAssetId) {
+    return (holding.amount || 0) / (holding.buyPriceUSD || 1);
+  }
+
+  return (holding.amount || 0) * (holding.buyPriceUSD || 0);
+}
+
 export const PortfolioProvider = ({ children }) => {
   const { user, loading: authLoading } = useAuth();
   const [holdings, setHoldings] = useState([]);
@@ -93,7 +102,7 @@ export const PortfolioProvider = ({ children }) => {
 
       const enriched = holdings.map((h) => {
         const currentPrice = h.assetId === 'custom' ? h.buyPriceUSD : (getAssetPrice(h.assetId) ?? h.buyPriceUSD);
-        const costUSD = h.amount * h.buyPriceUSD;
+        const costUSD = getHoldingCostUSD(h);
         const currentUSD = h.amount * currentPrice;
         const plUSD = currentUSD - costUSD;
         const plPercent = costUSD > 0 ? (plUSD / costUSD) * 100 : 0;
@@ -130,7 +139,7 @@ export const PortfolioProvider = ({ children }) => {
       const map = {};
       holdings.forEach((h) => {
         const currentPrice = h.assetId === 'custom' ? h.buyPriceUSD : (getAssetPrice(h.assetId) ?? h.buyPriceUSD);
-        const costUSD = h.amount * h.buyPriceUSD;
+        const costUSD = getHoldingCostUSD(h);
         const currentUSD = h.amount * currentPrice;
         if (!map[h.assetId]) {
           map[h.assetId] = {

@@ -41,12 +41,12 @@ const CRYPTO_ASSET_IDS = PREDEFINED_ASSETS
   .map((asset) => asset.id);
 const HOME_ASSET_IDS = [...FOREX_ASSET_IDS, 'gold-gram', 'silver-gram', 'gold-oz', 'silver-oz', ...CRYPTO_ASSET_IDS];
 
-function sanitizeTwoDecimalInput(value) {
+function sanitizeDecimalInput(value, maxDecimals = 8) {
   const normalized = value.replace(',', '.').replace(/[^0-9.]/g, '');
   const parts = normalized.split('.');
   if (parts.length === 1) return parts[0];
   const integerPart = parts[0];
-  const decimalPart = parts.slice(1).join('').slice(0, 2);
+  const decimalPart = parts.slice(1).join('').slice(0, maxDecimals);
   return `${integerPart}.${decimalPart}`;
 }
 
@@ -414,9 +414,9 @@ export default function AddInvestmentScreen({ navigation }) {
   }, [defaultInvestmentPlatform, holdings, investmentPlatforms]);
   const activeBaseAssetId = (baseCurrency || 'USD').toLowerCase();
   const isBaseCurrencyAsset = selectedAsset?.id === activeBaseAssetId;
-  const baseAssetManualRateInfo = language === 'en'
-    ? `For the ${baseCurrency} base asset, the purchase rate is entered manually in the local currency.`
-    : `${baseCurrency} bazli varlikta alis kuru yerel para birimi uzerinden manuel girilir.`;
+  const formatCurrencyInfo = (key) => t(key)
+    .replace('{baseCurrency}', baseCurrency)
+    .replace('{localCurrency}', localCurrency);
   const baseAssetSaveRateMissing = language === 'en'
     ? 'Purchase rate is missing; the base-currency transaction could not be saved.'
     : 'Alis kuru girilmedi, baz para birimi islemi kaydedilemedi.';
@@ -476,7 +476,7 @@ export default function AddInvestmentScreen({ navigation }) {
     ? (localCurrency === baseCurrency ? 1 : (parseFloat(buyPrice) || 0))
     : (parseFloat(buyPrice) || 0);
   const buyPriceUSD = isBaseCurrencyAsset
-    ? (currentMarketPriceUSD ?? convertCurrencyToUSD(buyPriceNumber, localCurrency, prices))
+    ? convertCurrencyToUSD(buyPriceNumber, localCurrency, prices)
     : convertCurrencyToUSD(
       buyPriceNumber,
       priceCurrency,
@@ -498,7 +498,7 @@ export default function AddInvestmentScreen({ navigation }) {
       Alert.alert(t('price_unavailable'), t('price_unavailable_sub'));
       return;
     }
-    setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)));
+    setBuyPrice(sanitizeDecimalInput(String(currentMarketPrice), 8));
   };
 
   const validate = () => {
@@ -506,6 +506,7 @@ export default function AddInvestmentScreen({ navigation }) {
     if (!amount || amountNumber <= 0) return t('valid_amount_error');
     if (isBaseCurrencyAsset && localCurrency !== baseCurrency && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
     if (!isBaseCurrencyAsset && (!buyPrice || buyPriceNumber <= 0)) return t('valid_purchase_price_error');
+    if (buyPriceUSD == null || !Number.isFinite(buyPriceUSD) || buyPriceUSD <= 0) return t('price_unavailable_sub');
     if (!date) return t('select_date_error');
     return null;
   };
@@ -686,10 +687,9 @@ export default function AddInvestmentScreen({ navigation }) {
                     <Text style={styles.marketPriceText}>
                       {t('current_price')}: <Text style={styles.marketPriceVal}>{formatCurrency(currentMarketPrice, localCurrency, currentMarketPrice < 1 ? 4 : 2)}</Text>
                     </Text>
-                    <Text style={styles.marketPriceSub}>{baseAssetManualRateInfo}</Text>
                     <TouchableOpacity
                       style={styles.autofillBtn}
-                      onPress={() => setBuyPrice(sanitizeTwoDecimalInput(currentMarketPrice.toFixed(2)))}
+                      onPress={() => setBuyPrice(sanitizeDecimalInput(String(currentMarketPrice), 8))}
                     >
                       <Text style={styles.autofillText}>{t('use')}</Text>
                     </TouchableOpacity>
@@ -705,16 +705,21 @@ export default function AddInvestmentScreen({ navigation }) {
                     placeholder="0.00"
                     placeholderTextColor={Colors.textLight}
                     value={buyPrice}
-                    onChangeText={(v) => setBuyPrice(sanitizeTwoDecimalInput(v))}
+                    onChangeText={(v) => setBuyPrice(sanitizeDecimalInput(v, 8))}
                     keyboardType="decimal-pad"
                     editable={!(isBaseCurrencyAsset && localCurrency === baseCurrency)}
                   />
                 </View>
                 {isBaseCurrencyAsset ? (
-                  <Text style={styles.marketPriceSub}>
-                    {t('buy_rate_label')}: 1 {baseCurrency} = {localCurrency}
-                  </Text>
-                ) : null}
+                  <>
+                    <Text style={styles.marketPriceSub}>
+                      {t('buy_rate_label')}: 1 {baseCurrency} = {localCurrency}
+                    </Text>
+                    <Text style={styles.marketPriceSub}>{formatCurrencyInfo('base_asset_cost_storage_info')}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.marketPriceSub}>{formatCurrencyInfo('asset_cost_storage_info')}</Text>
+                )}
               </FormRow>
             </>
           ) : null}

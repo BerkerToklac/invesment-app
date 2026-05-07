@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  PanResponder,
+  Vibration,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,11 +19,27 @@ import { Colors } from '../theme/colors';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
+import { StorageService } from '../services/storage';
 import { formatUSD, formatPercent } from '../utils/formatters';
 import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
 import { PREDEFINED_ASSETS, getAssetEmoji } from '../utils/assets';
 
-function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel, change, icon, iconColor, iconBg, flag, imageUrl }) {
+function RateCard({
+  label,
+  subLabel,
+  value,
+  valueLabel,
+  subValue,
+  subValueLabel,
+  change,
+  icon,
+  iconColor,
+  iconBg,
+  flag,
+  imageUrl,
+  favorite,
+  onToggleFavorite,
+}) {
   const isPositive = change >= 0;
 
   return (
@@ -63,11 +81,95 @@ function RateCard({ label, subLabel, value, valueLabel, subValue, subValueLabel,
           </View>
         ) : null}
       </View>
+      {onToggleFavorite ? (
+        <View style={styles.rateActions}>
+          <TouchableOpacity style={styles.rateFavoriteBtn} onPress={onToggleFavorite} activeOpacity={0.75}>
+            <Ionicons name={favorite ? 'star' : 'star-outline'} size={19} color={favorite ? Colors.warning : Colors.textLight} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function FavoriteMiniCard({ item, index, total, onMove, onToggleFavorite, onDragStart, onDragEnd }) {
+  const dragAnchor = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const { props } = item;
+  const panResponder = useMemo(
+    () => PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderGrant: () => {
+        dragAnchor.current = 0;
+        setDragging(true);
+        Vibration.vibrate(18);
+        onDragStart();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const step = 38;
+        if (gestureState.dy - dragAnchor.current > step && index < total - 1) {
+          dragAnchor.current += step;
+          onMove(1);
+        } else if (gestureState.dy - dragAnchor.current < -step && index > 0) {
+          dragAnchor.current -= step;
+          onMove(-1);
+        }
+      },
+      onPanResponderRelease: () => {
+        dragAnchor.current = 0;
+        setDragging(false);
+        onDragEnd();
+      },
+      onPanResponderTerminate: () => {
+        dragAnchor.current = 0;
+        setDragging(false);
+        onDragEnd();
+      },
+    }),
+    [index, onDragEnd, onDragStart, onMove, total]
+  );
+
+  return (
+    <View style={[styles.favoriteMiniCard, dragging && styles.favoriteMiniCardDragging]}>
+      <View style={[styles.favoriteMiniIcon, { backgroundColor: props.iconBg || Colors.accentLight }]}>
+        {props.imageUrl ? (
+          <Image source={{ uri: props.imageUrl }} style={styles.favoriteMiniLogo} resizeMode="contain" />
+        ) : props.flag ? (
+          <Text style={styles.favoriteMiniFlag}>{props.flag}</Text>
+        ) : (
+          <Ionicons name={props.icon} size={17} color={props.iconColor || Colors.primary} />
+        )}
+      </View>
+      <View style={styles.favoriteMiniInfo}>
+        <Text style={styles.favoriteMiniLabel} numberOfLines={1}>{props.label}</Text>
+        <Text style={styles.favoriteMiniSub} numberOfLines={1}>{props.subLabel || props.valueLabel || props.subValueLabel}</Text>
+      </View>
+      <View style={styles.favoriteMiniValues}>
+        <Text style={styles.favoriteMiniValue} numberOfLines={1}>{props.value}</Text>
+        {props.subValue ? (
+          <Text style={styles.favoriteMiniSubValue} numberOfLines={1}>{props.subValue}</Text>
+        ) : null}
+      </View>
+      <View style={styles.favoriteMiniTools}>
+        <TouchableOpacity style={styles.favoriteMiniStar} onPress={onToggleFavorite} activeOpacity={0.75}>
+          <Ionicons name="star" size={16} color={Colors.warning} />
+        </TouchableOpacity>
+        <View style={styles.favoriteMiniDrag} {...panResponder.panHandlers}>
+          <Ionicons name="reorder-three-outline" size={22} color={Colors.textLight} />
+        </View>
+      </View>
     </View>
   );
 }
 
 const CRYPTO_RATE_ASSETS = PREDEFINED_ASSETS.filter((asset) => asset.type === 'crypto');
+const FAVORITE_SECTION_LABELS = {
+  tr: 'Favoriler',
+  en: 'Favorites',
+};
 
 function getHoldingCostBaseValue(holding, { baseCurrency, prices }) {
   const snapshotBaseCost = holding.buyCurrencyTotals && holding.buyCurrencyTotals[baseCurrency];
@@ -84,6 +186,47 @@ export default function HomeScreen() {
   const { holdings, computeStats } = usePortfolio();
   const { localCurrency, baseCurrency, language, t } = useSettings();
   const [selectedSection, setSelectedSection] = useState('forex');
+  const [favoriteIds, setFavoriteIds] = useState([]);
+  const [favoriteDragging, setFavoriteDragging] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    StorageService.getHomeFavorites()
+      .then((storedFavorites) => {
+        if (mounted && Array.isArray(storedFavorites)) {
+          setFavoriteIds(storedFavorites.filter((id) => typeof id === 'string'));
+        }
+      })
+      .catch((error) => console.error('Load home favorites error:', error));
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const saveFavoriteIds = useCallback((nextFavorites) => {
+    setFavoriteIds(nextFavorites);
+    StorageService.saveHomeFavorites(nextFavorites).catch((error) => console.error('Save home favorites error:', error));
+  }, []);
+
+  const toggleFavorite = useCallback((id) => {
+    saveFavoriteIds(
+      favoriteIds.includes(id)
+        ? favoriteIds.filter((favoriteId) => favoriteId !== id)
+        : [...favoriteIds, id]
+    );
+  }, [favoriteIds, saveFavoriteIds]);
+
+  const moveFavorite = useCallback((id, direction) => {
+    const currentIndex = favoriteIds.indexOf(id);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= favoriteIds.length) return;
+
+    const nextFavorites = [...favoriteIds];
+    const [item] = nextFavorites.splice(currentIndex, 1);
+    nextFavorites.splice(nextIndex, 0, item);
+    saveFavoriteIds(nextFavorites);
+  }, [favoriteIds, saveFavoriteIds]);
 
   const getAssetPrice = (id) => {
     if (!prices) return null;
@@ -204,6 +347,125 @@ export default function HomeScreen() {
     { key: 'metals', label: t('metals') },
     { key: 'crypto', label: t('crypto') },
   ];
+  const marketItems = useMemo(() => {
+    const forexItems = forexRates.map(({ currency, meta, rate }) => ({
+      id: `forex:${currency}`,
+      section: 'forex',
+      props: {
+        label: language === 'en' ? meta.name : meta.localName,
+        subLabel: rate.subLabel,
+        value: rate.value,
+        valueLabel: rate.valueLabel,
+        subValue: rate.subValue,
+        subValueLabel: rate.subValueLabel,
+        flag: getAssetEmoji(currency.toLowerCase()),
+        icon: currency === 'EUR' ? 'logo-euro' : 'cash-outline',
+        iconColor: currency === 'USD' ? '#16A34A' : Colors.primary,
+        iconBg: currency === 'USD' ? '#DCFCE7' : Colors.accentLight,
+      },
+    }));
+
+    const metalItems = [
+      {
+        id: 'metals:gold-gram',
+        props: {
+          label: t('gram_gold'),
+          subLabel: '995/1000',
+          value: baseValue(goldGramUSD, 2),
+          subValue: baseSubValue(goldGramUSD, 2),
+          icon: 'medal-outline',
+          iconColor: Colors.gold,
+          iconBg: Colors.warningLight,
+        },
+      },
+      {
+        id: 'metals:silver-gram',
+        props: {
+          label: t('gram_silver'),
+          subLabel: '995/1000',
+          value: baseValue(silverGramUSD, 4),
+          subValue: baseSubValue(silverGramUSD, 2),
+          icon: 'medal-outline',
+          iconColor: Colors.silver,
+          iconBg: Colors.borderLight,
+        },
+      },
+      {
+        id: 'metals:gold-oz',
+        props: {
+          label: t('ounce_gold'),
+          subLabel: 'Troy oz / USD',
+          value: baseValue(goldOzUSD, 2),
+          subValue: baseSubValue(goldOzUSD, 2),
+          icon: 'medal-outline',
+          iconColor: Colors.gold,
+          iconBg: Colors.warningLight,
+        },
+      },
+      {
+        id: 'metals:silver-oz',
+        props: {
+          label: t('ounce_silver'),
+          subLabel: 'Troy oz / USD',
+          value: baseValue(silverOzUSD, 2),
+          subValue: baseSubValue(silverOzUSD, 2),
+          icon: 'medal-outline',
+          iconColor: Colors.silver,
+          iconBg: Colors.borderLight,
+        },
+      },
+    ].map((item) => ({ ...item, section: 'metals' }));
+
+    const cryptoItems = CRYPTO_RATE_ASSETS.map((asset) => {
+      const usdValue = prices?.crypto?.[asset.id]?.usd;
+      const decimals = usdValue != null && usdValue < 1 ? 4 : 2;
+
+      return {
+        id: `crypto:${asset.id}`,
+        section: 'crypto',
+        props: {
+          label: asset.name,
+          subLabel: `${asset.shortName} / USD`,
+          value: baseValue(usdValue, decimals),
+          subValue: baseSubValue(usdValue, decimals),
+          change: prices?.crypto?.[asset.id]?.change24h,
+          icon: 'logo-bitcoin',
+          iconColor: asset.color,
+          iconBg: Colors.accentLight,
+          imageUrl: asset.iconUrl,
+        },
+      };
+    });
+
+    return [...forexItems, ...metalItems, ...cryptoItems];
+  }, [
+    baseSubValue,
+    baseValue,
+    forexRates,
+    goldGramUSD,
+    goldOzUSD,
+    language,
+    prices?.crypto,
+    silverGramUSD,
+    silverOzUSD,
+    t,
+  ]);
+  const marketItemById = useMemo(
+    () => Object.fromEntries(marketItems.map((item) => [item.id, item])),
+    [marketItems]
+  );
+  const visibleFavorites = favoriteIds
+    .map((id) => marketItemById[id])
+    .filter(Boolean);
+  const sectionItems = marketItems.filter((item) => item.section === selectedSection);
+  const renderMarketItem = (item, options = {}) => (
+    <RateCard
+      key={item.id}
+      {...item.props}
+      favorite={favoriteIds.includes(item.id)}
+      onToggleFavorite={() => toggleFavorite(item.id)}
+    />
+  );
 
   return (
     <View style={styles.root}>
@@ -252,6 +514,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 20 }}
+        scrollEnabled={!favoriteDragging}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
         }
@@ -263,6 +526,24 @@ export default function HomeScreen() {
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>{t('live')}</Text>
         </View>
+
+        {!loading && visibleFavorites.length > 0 ? (
+          <View style={styles.favoritesSection}>
+            <Text style={styles.favoritesTitle}>{FAVORITE_SECTION_LABELS[language] || FAVORITE_SECTION_LABELS.tr}</Text>
+            {visibleFavorites.map((item, index) => (
+              <FavoriteMiniCard
+                key={item.id}
+                item={item}
+                index={index}
+                total={visibleFavorites.length}
+                onMove={(direction) => moveFavorite(item.id, direction)}
+                onToggleFavorite={() => toggleFavorite(item.id)}
+                onDragStart={() => setFavoriteDragging(true)}
+                onDragEnd={() => setFavoriteDragging(false)}
+              />
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.segmentedControl}>
           {sectionOptions.map((option) => (
@@ -291,90 +572,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            {selectedSection === 'forex' && (
-              <>
-                {forexRates.map(({ currency, meta, rate }) => (
-                  <RateCard
-                    key={currency}
-                    label={language === 'en' ? meta.name : meta.localName}
-                    subLabel={rate.subLabel}
-                    value={rate.value}
-                    valueLabel={rate.valueLabel}
-                    subValue={rate.subValue}
-                    subValueLabel={rate.subValueLabel}
-                    flag={getAssetEmoji(currency.toLowerCase())}
-                    icon={currency === 'EUR' ? 'logo-euro' : 'cash-outline'}
-                    iconColor={currency === 'USD' ? '#16A34A' : Colors.primary}
-                    iconBg={currency === 'USD' ? '#DCFCE7' : Colors.accentLight}
-                  />
-                ))}
-              </>
-            )}
-
-            {selectedSection === 'metals' && (
-              <>
-                <RateCard
-                  label={t('gram_gold')}
-                  subLabel="995/1000"
-                  value={baseValue(goldGramUSD, 2)}
-                  subValue={baseSubValue(goldGramUSD, 2)}
-                  icon="medal-outline"
-                  iconColor={Colors.gold}
-                  iconBg={Colors.warningLight}
-                />
-                <RateCard
-                  label={t('gram_silver')}
-                  subLabel="995/1000"
-                  value={baseValue(silverGramUSD, 4)}
-                  subValue={baseSubValue(silverGramUSD, 2)}
-                  icon="medal-outline"
-                  iconColor={Colors.silver}
-                  iconBg={Colors.borderLight}
-                />
-                <RateCard
-                  label={t('ounce_gold')}
-                  subLabel="Troy oz / USD"
-                  value={baseValue(goldOzUSD, 2)}
-                  subValue={baseSubValue(goldOzUSD, 2)}
-                  icon="medal-outline"
-                  iconColor={Colors.gold}
-                  iconBg={Colors.warningLight}
-                />
-                <RateCard
-                  label={t('ounce_silver')}
-                  subLabel="Troy oz / USD"
-                  value={baseValue(silverOzUSD, 2)}
-                  subValue={baseSubValue(silverOzUSD, 2)}
-                  icon="medal-outline"
-                  iconColor={Colors.silver}
-                  iconBg={Colors.borderLight}
-                />
-              </>
-            )}
-
-            {selectedSection === 'crypto' && (
-              <>
-                {CRYPTO_RATE_ASSETS.map((asset) => {
-                  const usdValue = prices?.crypto?.[asset.id]?.usd;
-                  const decimals = usdValue != null && usdValue < 1 ? 4 : 2;
-
-                  return (
-                    <RateCard
-                      key={asset.id}
-                      label={asset.name}
-                      subLabel={`${asset.shortName} / USD`}
-                      value={baseValue(usdValue, decimals)}
-                      subValue={baseSubValue(usdValue, decimals)}
-                      change={prices?.crypto?.[asset.id]?.change24h}
-                      icon="logo-bitcoin"
-                      iconColor={asset.color}
-                      iconBg={Colors.accentLight}
-                      imageUrl={asset.iconUrl}
-                    />
-                  );
-                })}
-              </>
-            )}
+            {sectionItems.map((item) => renderMarketItem(item))}
           </>
         )}
       </ScrollView>
@@ -501,6 +699,102 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
 
+  favoritesSection: {
+    marginBottom: 10,
+  },
+  favoritesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  favoriteMiniCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.035,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  favoriteMiniCardDragging: {
+    backgroundColor: '#F7FCF8',
+    transform: [{ scale: 1.025 }],
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+  },
+  favoriteMiniIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 9,
+  },
+  favoriteMiniLogo: { width: 21, height: 21, borderRadius: 10.5 },
+  favoriteMiniFlag: { fontSize: 18 },
+  favoriteMiniInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  favoriteMiniLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  favoriteMiniSub: {
+    fontSize: 11,
+    color: Colors.textLight,
+    marginTop: 1,
+  },
+  favoriteMiniValues: {
+    minWidth: 96,
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  favoriteMiniValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  favoriteMiniSubValue: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  favoriteMiniChange: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  favoriteMiniTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+    gap: 2,
+  },
+  favoriteMiniStar: {
+    width: 24,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteMiniDrag: {
+    width: 28,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   liveDot: {
     width: 7,
     height: 7,
@@ -539,7 +833,7 @@ const styles = StyleSheet.create({
   rateInfo: { flex: 1 },
   rateLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   rateSubLabel: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
-  rateValues: { minWidth: 172, alignItems: 'stretch', gap: 4 },
+  rateValues: { minWidth: 148, alignItems: 'stretch', gap: 4 },
   rateValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   rateValueLabel: { fontSize: 11, color: Colors.textLight, fontWeight: '600', width: 78, textAlign: 'left' },
   rateValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
@@ -554,6 +848,19 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   changeText: { fontSize: 11, fontWeight: '700' },
+  rateActions: {
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  rateFavoriteBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   loadingBox: {
     alignItems: 'center',

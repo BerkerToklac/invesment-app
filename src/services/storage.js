@@ -5,6 +5,7 @@ import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
 const KEYS = {
   AUTH_USER: '@portfoy_auth_user',
   SETTINGS: '@portfoy_settings',
+  HOME_FAVORITES: '@moneybook_home_favorites',
 };
 
 export const StorageService = {
@@ -34,7 +35,7 @@ export const StorageService = {
   },
 
   async deleteAllData() {
-    await AsyncStorage.multiRemove([KEYS.AUTH_USER, KEYS.SETTINGS]);
+    await AsyncStorage.multiRemove([KEYS.AUTH_USER, KEYS.SETTINGS, KEYS.HOME_FAVORITES]);
   },
 
   // Settings
@@ -52,5 +53,14 @@ export const StorageService = {
 
   async saveSettings(settings) {
     await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+  },
+
+  async getHomeFavorites() {
+    const data = await AsyncStorage.getItem(KEYS.HOME_FAVORITES);
+    return data ? JSON.parse(data) : [];
+  },
+
+  async saveHomeFavorites(favorites) {
+    await AsyncStorage.setItem(KEYS.HOME_FAVORITES, JSON.stringify(favorites));
   },
 };

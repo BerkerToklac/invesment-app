@@ -124,7 +124,7 @@ function CurrencyPreferencesModal({
   );
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
   const { holdings, clearPortfolio } = usePortfolio();
@@ -236,8 +236,8 @@ export default function SettingsScreen() {
 
   const userInitial = user?.name
     ? user.name.trim()[0].toUpperCase()
-    : user?.email?.[0]?.toUpperCase() || 'U';
-  const displayName = user?.name || t('user_fallback');
+    : user?.email?.[0]?.toUpperCase() || t('guest_user')[0];
+  const displayName = user?.name || (user ? t('user_fallback') : t('guest_user'));
 
   return (
     <View style={styles.root}>
@@ -253,14 +253,14 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{displayName}</Text>
-            <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={styles.userEmail}>{user?.email || t('guest_user_sub')}</Text>
             <Text style={styles.userSub}>
               {holdings.length} {t('positions_count')}
             </Text>
           </View>
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
-            <Text style={styles.verifiedText}>{t('verified')}</Text>
+          <View style={[styles.verifiedBadge, !user && styles.guestBadge]}>
+            <Ionicons name={user ? 'shield-checkmark' : 'eye-outline'} size={16} color={user ? Colors.success : Colors.primary} />
+            <Text style={[styles.verifiedText, !user && styles.guestBadgeText]}>{user ? t('verified') : t('guest_mode')}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -270,6 +270,22 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
+        {!user ? (
+          <>
+            <SectionHeader title={t('my_account')} />
+            <View style={styles.card}>
+              <SettingRow
+                icon="log-in-outline"
+                iconColor={Colors.primary}
+                iconBg={Colors.accentLight}
+                label={t('welcome_cta_login')}
+                sub={t('settings_login_sub')}
+                onPress={() => navigation.navigate('Login')}
+              />
+            </View>
+          </>
+        ) : null}
+
         <SectionHeader title={t('market_info')} />
         <View style={styles.card}>
           <SettingRow
@@ -328,18 +344,22 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <SectionHeader title={t('portfolio_section')} />
-        <View style={styles.card}>
-          <SettingRow
-            icon="trash-outline"
-            iconColor={Colors.danger}
-            iconBg={Colors.dangerLight}
-            label={t('clear_portfolio')}
-            sub={t('clear_portfolio_sub')}
-            onPress={handleClearPortfolio}
-            danger
-          />
-        </View>
+        {user ? (
+          <>
+            <SectionHeader title={t('portfolio_section')} />
+            <View style={styles.card}>
+              <SettingRow
+                icon="trash-outline"
+                iconColor={Colors.danger}
+                iconBg={Colors.dangerLight}
+                label={t('clear_portfolio')}
+                sub={t('clear_portfolio_sub')}
+                onPress={handleClearPortfolio}
+                danger
+              />
+            </View>
+          </>
+        ) : null}
 
         <SectionHeader title={t('app')} />
         <View style={styles.card}>
@@ -366,19 +386,23 @@ export default function SettingsScreen() {
           <Text style={styles.disclaimerText}>{t('disclaimer_text')}</Text>
         </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-          <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-          <Text style={styles.logoutText}>{t('logout')}</Text>
-        </TouchableOpacity>
+        {user ? (
+          <>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+              <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
+              <Text style={styles.logoutText}>{t('logout')}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
-          <Ionicons name="trash" size={18} color="#fff" />
-          <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
+              <Ionicons name="trash" size={18} color="#fff" />
+              <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
+            </TouchableOpacity>
 
-        <Text style={styles.deleteAccountWarning}>
-          {t('delete_account_warning')}
-        </Text>
+            <Text style={styles.deleteAccountWarning}>
+              {t('delete_account_warning')}
+            </Text>
+          </>
+        ) : null}
       </ScrollView>
 
       <CurrencyPreferencesModal
@@ -438,6 +462,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   verifiedText: { fontSize: 11, color: Colors.success, fontWeight: '700' },
+  guestBadge: { backgroundColor: Colors.accentLight },
+  guestBadgeText: { color: Colors.primary },
 
   scroll: { flex: 1, paddingHorizontal: 16 },
 

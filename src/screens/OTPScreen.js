@@ -82,8 +82,17 @@ export default function OTPScreen({ route, navigation }) {
     try {
       const user = await verifyLoginCode(email, otpCode);
       if (!user.profileCompleted) {
-        navigation.replace('Onboarding', { email });
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Onboarding', params: { email } }],
+        });
+        return;
       }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (e) {
       const msg = e.status === 400 ? t('otp_code_expired_or_invalid') : t('otp_verify_failed');
       Alert.alert(t('error'), msg);

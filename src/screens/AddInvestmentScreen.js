@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useMarket } from '../context/MarketContext';
 import { useSettings } from '../context/SettingsContext';
@@ -378,6 +379,7 @@ function PlatformPickerModal({
 
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { holdings, addHolding, reassignSourcePlatform } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
   const {
@@ -438,11 +440,13 @@ export default function AddInvestmentScreen({ navigation }) {
   );
 
   useEffect(() => {
+    if (!user) return undefined;
+
     const timer = setTimeout(() => {
       setPickerVisible(true);
     }, 250);
     return () => clearTimeout(timer);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     setPriceCurrency((current) => (priceCurrencyOptions.includes(current) ? current : localCurrency));
@@ -564,6 +568,40 @@ export default function AddInvestmentScreen({ navigation }) {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
+          style={[styles.header, { paddingTop: insets.top + 12 }]}
+        >
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t('add_investment')}</Text>
+            <View style={styles.closeBtn} />
+          </View>
+        </LinearGradient>
+        <View style={styles.authGate}>
+          <View style={styles.authGateIcon}>
+            <Ionicons name="lock-closed-outline" size={42} color={Colors.primary} />
+          </View>
+          <Text style={styles.authGateTitle}>{t('portfolio_login_title')}</Text>
+          <Text style={styles.authGateSubtitle}>{t('portfolio_login_subtitle')}</Text>
+          <TouchableOpacity
+            style={styles.authGateBtn}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="log-in-outline" size={20} color="#fff" />
+            <Text style={styles.authGateBtnText}>{t('welcome_cta_login')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -810,6 +848,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+
+  authGate: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingBottom: 28,
+  },
+  authGateIcon: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: Colors.accentLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 22,
+  },
+  authGateTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  authGateSubtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 26,
+  },
+  authGateBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  authGateBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 20 },
 

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
@@ -242,6 +243,7 @@ function HoldingRow({ holding, onDelete, localCurrency, baseCurrency, prices }) 
 
 export default function PortfolioScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { prices, refreshing, refresh } = useMarket();
   const { holdings, computeStats, getGroupedHoldings, deleteHolding } = usePortfolio();
   const { localCurrency, baseCurrency, language, t } = useSettings();
@@ -352,6 +354,42 @@ export default function PortfolioScreen({ navigation }) {
   }, [baseCurrency, enrichedHoldings, language, localCurrency, prices, totalCurrentUSD]);
   const isPositive = totalPLBase >= 0;
   const totalPLPercentBase = totalCostBase > 0 ? (totalPLBase / totalCostBase) * 100 : 0;
+
+  if (!user) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientMid, Colors.gradientEnd]}
+          style={[styles.emptyHeader, { paddingTop: insets.top + 16 }]}
+        >
+          <Text style={styles.pageTitle}>{t('portfolio_tab')}</Text>
+        </LinearGradient>
+        <View style={styles.authGate}>
+          <View style={styles.authGateIcon}>
+            <Ionicons name="briefcase-outline" size={44} color={Colors.primary} />
+          </View>
+          <Text style={styles.authGateTitle}>{t('portfolio_login_title')}</Text>
+          <Text style={styles.authGateSubtitle}>{t('portfolio_login_subtitle')}</Text>
+          <View style={styles.authBenefitList}>
+            {[
+              t('portfolio_login_benefit_assets'),
+              t('portfolio_login_benefit_costs'),
+              t('portfolio_login_benefit_performance'),
+            ].map((benefit) => (
+              <View key={benefit} style={styles.authBenefitRow}>
+                <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                <Text style={styles.authBenefitText}>{benefit}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.authGateBtn} onPress={() => navigation.navigate('Login')} activeOpacity={0.85}>
+            <Ionicons name="log-in-outline" size={20} color="#fff" />
+            <Text style={styles.authGateBtnText}>{t('welcome_cta_login')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (holdings.length === 0) {
     return (
@@ -723,6 +761,68 @@ const styles = StyleSheet.create({
   emptyHeader: { paddingHorizontal: 20, paddingBottom: 20 },
   pageTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  authGate: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingBottom: 28,
+  },
+  authGateIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.accentLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 22,
+  },
+  authGateTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  authGateSubtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 22,
+  },
+  authBenefitList: {
+    gap: 10,
+    marginBottom: 28,
+  },
+  authBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.cardBg,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  authBenefitText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+  authGateBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  authGateBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   emptyIcon: {
     width: 96,
     height: 96,

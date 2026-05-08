@@ -10,8 +10,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { Colors } from '../theme/colors';
 
-import SplashScreen from '../screens/SplashScreen';
-import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import OTPScreen from '../screens/OTPScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
@@ -62,18 +60,6 @@ function MainTabs() {
   );
 }
 
-function AuthStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Splash" component={SplashScreen} />
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="OTP" component={OTPScreen} />
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-    </Stack.Navigator>
-  );
-}
-
 function OnboardingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -86,6 +72,9 @@ function AppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="OTP" component={OTPScreen} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen
         name="AddInvestment"
         component={AddInvestmentScreen}
@@ -112,7 +101,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {!user ? <AuthStack /> : user.profileCompleted ? <AppStack /> : <OnboardingStack />}
+      {!user || user.profileCompleted ? <AppStack /> : <OnboardingStack />}
     </NavigationContainer>
   );
 }

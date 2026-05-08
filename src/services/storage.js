@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { detectDeviceLanguage } from '../utils/language';
 import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
 
 const KEYS = {
@@ -44,7 +45,7 @@ export const StorageService = {
     const defaults = {
       localCurrency: 'TRY',
       baseCurrency: 'USD',
-      language: 'tr',
+      language: detectDeviceLanguage(),
       notifications: true,
       homeFavoriteIds: [],
       investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM],

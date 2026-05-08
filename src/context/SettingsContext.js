@@ -5,6 +5,7 @@ import { apiClient } from '../services/apiClient';
 import { StorageService } from '../services/storage';
 import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { translate } from '../utils/i18n';
+import { detectDeviceLanguage, normalizeLanguage, SUPPORTED_LANGUAGES } from '../utils/language';
 import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
 
 const SettingsContext = createContext(null);
@@ -12,7 +13,7 @@ const SettingsContext = createContext(null);
 const DEFAULT_SETTINGS = {
   localCurrency: 'TRY',
   baseCurrency: 'USD',
-  language: 'tr',
+  language: detectDeviceLanguage(),
   notifications: true,
   homeFavoriteIds: [],
   investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM],
@@ -22,7 +23,7 @@ function sanitizeSettings(settings) {
   return {
     localCurrency: settings.localCurrency,
     baseCurrency: settings.baseCurrency,
-    language: settings.language,
+    language: normalizeLanguage(settings.language),
     notifications: settings.notifications,
     homeFavoriteIds: Array.isArray(settings.homeFavoriteIds) ? settings.homeFavoriteIds : [],
     investmentPlatforms: settings.investmentPlatforms,
@@ -147,7 +148,7 @@ export const SettingsProvider = ({ children }) => {
   }, [updateSettings]);
 
   const setLanguage = useCallback(async (language) => {
-    if (!['tr', 'en'].includes(language)) return settings;
+    if (!SUPPORTED_LANGUAGES.includes(language)) return settings;
     return updateSettings({ language });
   }, [settings, updateSettings]);
 
@@ -253,7 +254,7 @@ export const SettingsProvider = ({ children }) => {
     loading,
     localCurrency: settings.localCurrency || 'TRY',
     baseCurrency: settings.baseCurrency || 'USD',
-    language: settings.language || 'tr',
+    language: normalizeLanguage(settings.language),
     notifications: settings.notifications ?? true,
     homeFavoriteIds: settings.homeFavoriteIds || [],
     investmentPlatforms: settings.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms,
@@ -267,7 +268,7 @@ export const SettingsProvider = ({ children }) => {
     removeInvestmentPlatform,
     defaultInvestmentPlatform: DEFAULT_INVESTMENT_PLATFORM,
     reloadSettings: loadSettings,
-    t: (key) => translate(settings.language || 'tr', key),
+    t: (key) => translate(normalizeLanguage(settings.language), key),
   }), [addHomeFavorite, addInvestmentPlatform, loadSettings, loading, removeHomeFavorite, removeInvestmentPlatform, setHomeFavoriteIds, settings, setCurrencyPreferences, setLanguage, updateSettings]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

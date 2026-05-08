@@ -275,6 +275,7 @@ function PlatformPickerModal({
   onDelete,
   t,
 }) {
+  const insets = useSafeAreaInsets();
   const [platformName, setPlatformName] = useState('');
   const cleanedPlatformName = platformName.trim();
 
@@ -304,7 +305,11 @@ function PlatformPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.modalRoot}>
+      <KeyboardAvoidingView
+        style={styles.modalRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 48 : 0}
+      >
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>{t('source_platform')}</Text>
           <TouchableOpacity onPress={onClose}>
@@ -320,6 +325,7 @@ function PlatformPickerModal({
         <FlatList
           data={platforms}
           keyExtractor={(item) => item}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
           renderItem={({ item }) => (
             <View style={[styles.platformItem, selectedPlatform === item && styles.platformItemActive]}>
@@ -351,7 +357,7 @@ function PlatformPickerModal({
           )}
         />
 
-        <View style={styles.platformAddBox}>
+        <View style={[styles.platformAddBox, { paddingBottom: Math.max(insets.bottom, 12) + 52 }]}>
           <Text style={styles.platformAddTitle}>{t('source_platform_add_new')}</Text>
           <TextInput
             style={styles.platformAddInput}
@@ -372,7 +378,7 @@ function PlatformPickerModal({
             <Text style={styles.platformAddButtonText}>{t('source_platform_add')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

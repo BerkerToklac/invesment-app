@@ -50,6 +50,12 @@ Not: Mobil release davranisi BOMS/Petsy ile ayni modeldedir; mobil degisiklikler
 | `GET` | `/investment/market` | Hayir | Doviz, metal ve kripto fiyatlari |
 | `GET` | `/investment/profile` | Evet | Profil bilgisi |
 | `PUT` | `/investment/profile` | Evet | Profil guncelleme |
+| `GET` | `/investment/preferences` | Evet | Favoriler ve alis kaynaklari |
+| `PUT` | `/investment/preferences/home-favorites` | Evet | Favori siralamasini guncelle |
+| `POST` | `/investment/preferences/home-favorites` | Evet | Favori ekle |
+| `DELETE` | `/investment/preferences/home-favorites/:favoriteId` | Evet | Favori sil |
+| `POST` | `/investment/preferences/investment-platforms` | Evet | Alis kaynagi ekle |
+| `DELETE` | `/investment/preferences/investment-platforms/:platformName` | Evet | Alis kaynagi sil |
 | `GET` | `/investment/portfolio` | Evet | Portfoy kalemleri |
 | `POST` | `/investment/portfolio` | Evet | Yeni kalem ekle |
 | `PUT` | `/investment/portfolio/:id` | Evet | Kalem guncelle |

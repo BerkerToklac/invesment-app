@@ -46,6 +46,7 @@ export const StorageService = {
       baseCurrency: 'USD',
       language: 'tr',
       notifications: true,
+      homeFavoriteIds: [],
       investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM],
     };
     return data ? { ...defaults, ...JSON.parse(data) } : defaults;

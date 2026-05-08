@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import { Colors } from '../theme/colors';
 import { useMarket } from '../context/MarketContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
-import { StorageService } from '../services/storage';
 import { formatUSD, formatPercent } from '../utils/formatters';
 import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
 import { PREDEFINED_ASSETS, getAssetEmoji } from '../utils/assets';
@@ -184,38 +183,32 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { prices, loading, refreshing, refresh, lastUpdated } = useMarket();
   const { holdings, computeStats } = usePortfolio();
-  const { localCurrency, baseCurrency, language, t } = useSettings();
+  const {
+    localCurrency,
+    baseCurrency,
+    language,
+    homeFavoriteIds,
+    setHomeFavoriteIds,
+    addHomeFavorite,
+    removeHomeFavorite,
+    t,
+  } = useSettings();
   const [selectedSection, setSelectedSection] = useState('forex');
-  const [favoriteIds, setFavoriteIds] = useState([]);
+  const favoriteIds = homeFavoriteIds || [];
   const [favoriteDragging, setFavoriteDragging] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    StorageService.getHomeFavorites()
-      .then((storedFavorites) => {
-        if (mounted && Array.isArray(storedFavorites)) {
-          setFavoriteIds(storedFavorites.filter((id) => typeof id === 'string'));
-        }
-      })
-      .catch((error) => console.error('Load home favorites error:', error));
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const saveFavoriteIds = useCallback((nextFavorites) => {
-    setFavoriteIds(nextFavorites);
-    StorageService.saveHomeFavorites(nextFavorites).catch((error) => console.error('Save home favorites error:', error));
-  }, []);
+    setHomeFavoriteIds(nextFavorites).catch((error) => console.error('Save home favorites error:', error));
+  }, [setHomeFavoriteIds]);
 
   const toggleFavorite = useCallback((id) => {
-    saveFavoriteIds(
-      favoriteIds.includes(id)
-        ? favoriteIds.filter((favoriteId) => favoriteId !== id)
-        : [...favoriteIds, id]
-    );
-  }, [favoriteIds, saveFavoriteIds]);
+    if (favoriteIds.includes(id)) {
+      removeHomeFavorite(id).catch((error) => console.error('Remove home favorite error:', error));
+      return;
+    }
+
+    addHomeFavorite(id).catch((error) => console.error('Add home favorite error:', error));
+  }, [addHomeFavorite, favoriteIds, removeHomeFavorite]);
 
   const moveFavorite = useCallback((id, direction) => {
     const currentIndex = favoriteIds.indexOf(id);

@@ -129,7 +129,14 @@ export default function SettingsScreen({ navigation }) {
   const { user, logout, deleteAccount } = useAuth();
   const { holdings, clearPortfolio } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
-  const { localCurrency, baseCurrency, setCurrencyPreferences, language, setLanguage, t } = useSettings();
+  const {
+    localCurrency,
+    baseCurrency,
+    setCurrencyPreferences,
+    language,
+    setLanguage,
+    t,
+  } = useSettings();
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
   const [draftBaseCurrency, setDraftBaseCurrency] = useState(baseCurrency);
   const [draftLocalCurrency, setDraftLocalCurrency] = useState(localCurrency);
@@ -203,7 +210,9 @@ export default function SettingsScreen({ navigation }) {
     const applyChange = async ({ resetPortfolio }) => {
       try {
         await setCurrencyPreferences({ baseCurrency: draftBaseCurrency, localCurrency: draftLocalCurrency });
-        if (resetPortfolio) await clearPortfolio();
+        if (resetPortfolio) {
+          await clearPortfolio();
+        }
         setCurrencyModalVisible(false);
         Alert.alert(t('success'), resetPortfolio ? t('currency_preferences_changed_reset') : t('currency_preferences_changed'));
       } catch (err) {

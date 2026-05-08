@@ -440,5 +440,5 @@ export const translations = {
 };
 
 export function translate(language, key) {
-  return translations[language]?.[key] ?? translations.tr[key] ?? key;
+  return translations[language]?.[key] ?? translations.en[key] ?? key;
 }

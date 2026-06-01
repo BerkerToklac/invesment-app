@@ -10,7 +10,7 @@ Backend karsiligi `/Users/airm4/Desktop/dev/project1-be` reposundaki `INVESTMENT
 - Backend baglantisi `EXPO_PUBLIC_BACKEND_URL` uzerinden yonetilir.
 - Piyasa verisi backendde OpenExchangeRates + CoinMarketCap birlesimiyle uretilir, istemci `/investment/market` endpointinden ceker.
 
-Not: Mobil release davranisi BOMS/Petsy ile ayni modeldedir; mobil degisiklikler store review ve kullanici update sonrasinda canli olur.
+Not: Mobil release davranisi BoomDating/Petsy ile ayni modeldedir; mobil degisiklikler store review ve kullanici update sonrasinda canli olur.
 
 ## Ozellikler
 

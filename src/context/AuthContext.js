@@ -83,6 +83,7 @@ export const AuthProvider = ({ children }) => {
     const merged = {
       ...(user || {}),
       ...data.user,
+      profileCompleted: true,
       loggedAt: user?.loggedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

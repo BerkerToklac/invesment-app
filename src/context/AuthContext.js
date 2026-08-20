@@ -152,11 +152,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteAccount = async () => {
-    try {
-      await apiClient.delete('/users/me');
-    } catch (e) {
-      console.error('Delete account API error:', e);
-    }
+    await apiClient.delete('/users/me');
     await clearSession({ clearAllData: true });
   };
 

@@ -80,10 +80,17 @@ export default function OTPScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      // AppNavigator switches stacks from the authenticated user state.
-      // Keeping navigation in one place avoids racing a manual reset against
-      // the auth state update (and briefly restoring the onboarding route).
-      await verifyLoginCode(email, otpCode);
+      const signedInUser = await verifyLoginCode(email, otpCode);
+
+      // Existing MoneyBook accounts stay in the current app navigator, so
+      // reset it explicitly once the code is accepted. New accounts are left
+      // to AppNavigator, which switches them into the onboarding-only stack.
+      if (signedInUser.profileCompleted) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      }
     } catch (e) {
       const msg = e.status === 400 ? t('otp_code_expired_or_invalid') : t('otp_verify_failed');
       Alert.alert(t('error'), msg);

@@ -3,17 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://project1-be-1.onrender.com';
 const TOKEN_KEY   = '@portfoy_token';
 let unauthorizedHandler = null;
+let tokenCache;
 
 async function getToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  if (tokenCache !== undefined) return tokenCache;
+  tokenCache = await AsyncStorage.getItem(TOKEN_KEY);
+  return tokenCache;
 }
 
 export async function saveToken(token) {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  tokenCache = token;
+  return AsyncStorage.setItem(TOKEN_KEY, token);
 }
 
 export async function removeToken() {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  tokenCache = null;
+  return AsyncStorage.removeItem(TOKEN_KEY);
 }
 
 export function setUnauthorizedHandler(handler) {

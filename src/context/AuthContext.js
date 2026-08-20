@@ -4,6 +4,18 @@ import { apiClient, saveToken, removeToken, setUnauthorizedHandler } from '../se
 
 const AuthContext = createContext(null);
 
+function persistUserInBackground(userData) {
+  StorageService.saveUser(userData).catch((error) => {
+    console.error('Persist user error:', error);
+  });
+}
+
+function persistTokenInBackground(token) {
+  saveToken(token).catch((error) => {
+    console.error('Persist token error:', error);
+  });
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,9 +68,8 @@ export const AuthProvider = ({ children }) => {
       // flight. Never let that older response overwrite the newer session.
       if (revisionAtStart !== sessionRevisionRef.current) return;
 
-      await StorageService.saveUser(nextUser);
-      if (revisionAtStart !== sessionRevisionRef.current) return;
       setUser(nextUser);
+      persistUserInBackground(nextUser);
     } catch (e) {
       console.error('Auth check error:', e);
 
@@ -84,10 +95,10 @@ export const AuthProvider = ({ children }) => {
     });
     sessionRevisionRef.current += 1;
     setProfileCompletionPending(false);
-    await saveToken(data.token);
     const userData = { ...data.user, loggedAt: new Date().toISOString() };
-    await StorageService.saveUser(userData);
     setUser(userData);
+    persistTokenInBackground(data.token);
+    persistUserInBackground(userData);
     return userData;
   };
 
@@ -109,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     setUser(optimisticUser);
 
     try {
-      await StorageService.saveUser(optimisticUser);
+      persistUserInBackground(optimisticUser);
       const data = await apiClient.put('/investment/profile', { name });
       const merged = {
         ...optimisticUser,
@@ -118,16 +129,18 @@ export const AuthProvider = ({ children }) => {
         loggedAt: optimisticUser.loggedAt,
         updatedAt: new Date().toISOString(),
       };
-      await StorageService.saveUser(merged);
       setUser(merged);
+      persistUserInBackground(merged);
       return merged;
     } catch (error) {
       if (previousUser) {
-        await StorageService.saveUser(previousUser);
         setUser(previousUser);
+        persistUserInBackground(previousUser);
       } else {
-        await StorageService.removeUser();
         setUser(null);
+        StorageService.removeUser().catch((storageError) => {
+          console.error('Remove user error:', storageError);
+        });
       }
       setProfileCompletionPending(false);
       throw error;

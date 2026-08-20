@@ -62,7 +62,7 @@ function MainTabs() {
 
 function OnboardingStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
     </Stack.Navigator>
   );
@@ -70,11 +70,10 @@ function OnboardingStack() {
 
 function AppStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="Main" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen
         name="AddInvestment"
         component={AddInvestmentScreen}
@@ -90,6 +89,7 @@ function AppStack() {
 
 export default function AppNavigator() {
   const { user, loading, profileCompletionPending } = useAuth();
+  const showApp = !user || user.profileCompleted || profileCompletionPending;
 
   if (loading) {
     return (
@@ -100,8 +100,8 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      {!user || user.profileCompleted || profileCompletionPending ? <AppStack /> : <OnboardingStack />}
+    <NavigationContainer key={showApp ? 'app-flow' : 'onboarding-flow'}>
+      {showApp ? <AppStack /> : <OnboardingStack />}
     </NavigationContainer>
   );
 }

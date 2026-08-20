@@ -7,10 +7,12 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileCompletionPending, setProfileCompletionPending] = useState(false);
   const sessionRevisionRef = useRef(0);
 
   const clearSession = async ({ clearAllData = false } = {}) => {
     sessionRevisionRef.current += 1;
+    setProfileCompletionPending(false);
     await removeToken();
 
     if (clearAllData) {
@@ -81,6 +83,7 @@ export const AuthProvider = ({ children }) => {
       loginCode: code,
     });
     sessionRevisionRef.current += 1;
+    setProfileCompletionPending(false);
     await saveToken(data.token);
     const userData = { ...data.user, loggedAt: new Date().toISOString() };
     await StorageService.saveUser(userData);
@@ -90,17 +93,45 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (name) => {
     sessionRevisionRef.current += 1;
-    const data = await apiClient.put('/investment/profile', { name });
-    const merged = {
-      ...(user || {}),
-      ...data.user,
+    const previousUser = user;
+    const optimisticUser = {
+      ...(previousUser || {}),
+      name,
       profileCompleted: true,
-      loggedAt: user?.loggedAt || new Date().toISOString(),
+      loggedAt: previousUser?.loggedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    await StorageService.saveUser(merged);
-    setUser(merged);
-    return merged;
+
+    // The server write can take longer than the UI transition. Keep the app
+    // out of onboarding while it is pending. Persist the optimistic state too:
+    // an app refresh cannot recreate the empty form while the write is active.
+    setProfileCompletionPending(true);
+    setUser(optimisticUser);
+
+    try {
+      await StorageService.saveUser(optimisticUser);
+      const data = await apiClient.put('/investment/profile', { name });
+      const merged = {
+        ...optimisticUser,
+        ...data.user,
+        profileCompleted: true,
+        loggedAt: optimisticUser.loggedAt,
+        updatedAt: new Date().toISOString(),
+      };
+      await StorageService.saveUser(merged);
+      setUser(merged);
+      return merged;
+    } catch (error) {
+      if (previousUser) {
+        await StorageService.saveUser(previousUser);
+        setUser(previousUser);
+      } else {
+        await StorageService.removeUser();
+        setUser(null);
+      }
+      setProfileCompletionPending(false);
+      throw error;
+    }
   };
 
   const logout = async () => {
@@ -117,7 +148,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, sendLoginCode, verifyLoginCode, updateProfile, logout, deleteAccount }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      profileCompletionPending,
+      sendLoginCode,
+      verifyLoginCode,
+      updateProfile,
+      logout,
+      deleteAccount,
+    }}>
       {children}
     </AuthContext.Provider>
   );

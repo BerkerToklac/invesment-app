@@ -89,7 +89,7 @@ function AppStack() {
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, profileCompletionPending } = useAuth();
 
   if (loading) {
     return (
@@ -101,7 +101,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {!user || user.profileCompleted ? <AppStack /> : <OnboardingStack />}
+      {!user || user.profileCompleted || profileCompletionPending ? <AppStack /> : <OnboardingStack />}
     </NavigationContainer>
   );
 }

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Keyboard,
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -69,6 +70,7 @@ export default function OnboardingScreen({ route, navigation }) {
   const [selectedLocalCurrency, setSelectedLocalCurrency] = useState(localCurrency || 'TRY');
   const [loading, setLoading] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
+  const submittingRef = useRef(false);
 
   // Giriş animasyonları
   const fadeIn   = useRef(new Animated.Value(0)).current;
@@ -111,10 +113,15 @@ export default function OnboardingScreen({ route, navigation }) {
   ];
 
   const handleSave = async () => {
+    if (submittingRef.current) return;
+
     if (name.trim().length < 2) {
       Alert.alert(t('onboarding_missing_info_title'), t('onboarding_missing_info_body'));
       return;
     }
+
+    submittingRef.current = true;
+    Keyboard.dismiss();
     setLoading(true);
     try {
       await setCurrencyPreferences({
@@ -124,6 +131,7 @@ export default function OnboardingScreen({ route, navigation }) {
       await updateProfile(name.trim());
     } catch (e) {
       Alert.alert(t('error'), t('onboarding_save_error'));
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -239,7 +247,9 @@ export default function OnboardingScreen({ route, navigation }) {
                   onFocus={() => setNameFocused(true)}
                   onBlur={() => setNameFocused(false)}
                   autoCapitalize="words"
-                  returnKeyType="next"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSave}
+                  editable={!loading}
                   maxLength={50}
                   selectionColor="rgba(255,255,255,0.95)"
                 />

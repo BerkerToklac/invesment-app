@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { apiClient, saveToken, removeToken, setUnauthorizedHandler } from '../services/apiClient';
 
@@ -7,8 +7,10 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const sessionRevisionRef = useRef(0);
 
   const clearSession = async ({ clearAllData = false } = {}) => {
+    sessionRevisionRef.current += 1;
     await removeToken();
 
     if (clearAllData) {
@@ -33,6 +35,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
+    const revisionAtStart = sessionRevisionRef.current;
+
     try {
       const savedUser = await StorageService.getUser();
       if (!savedUser) {
@@ -46,7 +50,12 @@ export const AuthProvider = ({ children }) => {
         loggedAt: savedUser.loggedAt || new Date().toISOString(),
       };
 
+      // A login/profile update may have completed while /users/me was in
+      // flight. Never let that older response overwrite the newer session.
+      if (revisionAtStart !== sessionRevisionRef.current) return;
+
       await StorageService.saveUser(nextUser);
+      if (revisionAtStart !== sessionRevisionRef.current) return;
       setUser(nextUser);
     } catch (e) {
       console.error('Auth check error:', e);
@@ -71,6 +80,7 @@ export const AuthProvider = ({ children }) => {
       app: 'investment',
       loginCode: code,
     });
+    sessionRevisionRef.current += 1;
     await saveToken(data.token);
     const userData = { ...data.user, loggedAt: new Date().toISOString() };
     await StorageService.saveUser(userData);
@@ -79,6 +89,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateProfile = async (name) => {
+    sessionRevisionRef.current += 1;
     const data = await apiClient.put('/investment/profile', { name });
     const merged = {
       ...(user || {}),

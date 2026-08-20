@@ -80,19 +80,10 @@ export default function OTPScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      const user = await verifyLoginCode(email, otpCode);
-      if (!user.profileCompleted) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Onboarding', params: { email } }],
-        });
-        return;
-      }
-
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
+      // AppNavigator switches stacks from the authenticated user state.
+      // Keeping navigation in one place avoids racing a manual reset against
+      // the auth state update (and briefly restoring the onboarding route).
+      await verifyLoginCode(email, otpCode);
     } catch (e) {
       const msg = e.status === 400 ? t('otp_code_expired_or_invalid') : t('otp_verify_failed');
       Alert.alert(t('error'), msg);

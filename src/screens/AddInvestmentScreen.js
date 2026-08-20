@@ -35,6 +35,7 @@ import {
   getLocalCurrencyOptions,
 } from '../utils/currency';
 import { DEFAULT_INVESTMENT_PLATFORM, getPlatformDisplayName } from '../utils/platforms';
+import { getUserFacingError } from '../utils/userFacingError';
 
 const FOREX_ASSET_IDS = SUPPORTED_CURRENCIES.map((currency) => currency.toLowerCase());
 const CRYPTO_ASSET_IDS = PREDEFINED_ASSETS
@@ -386,7 +387,7 @@ function PlatformPickerModal({
 export default function AddInvestmentScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { holdings, addHolding, reassignSourcePlatform } = usePortfolio();
+  const { holdings, addHolding, reload: reloadPortfolio } = usePortfolio();
   const { getAssetPrice, prices } = useMarket();
   const {
     localCurrency,
@@ -569,7 +570,7 @@ export default function AddInvestmentScreen({ navigation }) {
         { text: t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      Alert.alert(t('error'), error?.message || t('add_investment_error'));
+      Alert.alert(t('error'), getUserFacingError(error, t('add_investment_error')));
     } finally {
       setLoading(false);
     }
@@ -828,8 +829,8 @@ export default function AddInvestmentScreen({ navigation }) {
         onSelect={setSourcePlatform}
         onAdd={addInvestmentPlatform}
         onDelete={async (platformName) => {
-          await reassignSourcePlatform(platformName, defaultInvestmentPlatform);
           await removeInvestmentPlatform(platformName);
+          await reloadPortfolio();
           if (sourcePlatform === platformName) {
             setSourcePlatform(defaultInvestmentPlatform);
           }

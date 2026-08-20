@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const updateProfile = async (name) => {
+  const updateProfile = async (name, onboardingPreferences = null) => {
     sessionRevisionRef.current += 1;
     const previousUser = user;
     const optimisticUser = {
@@ -121,7 +121,9 @@ export const AuthProvider = ({ children }) => {
 
     try {
       persistUserInBackground(optimisticUser);
-      const data = await apiClient.put('/investment/profile', { name });
+      const data = onboardingPreferences
+        ? await apiClient.put('/investment/onboarding', { name, ...onboardingPreferences })
+        : await apiClient.put('/investment/profile', { name });
       const merged = {
         ...optimisticUser,
         ...data.user,

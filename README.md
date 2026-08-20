@@ -1,14 +1,17 @@
 # MoneyBook (invesment-app)
 
-`invesment-app`, Expo ile gelistirilen INVESTMENT istemcisidir. Uygulama e-posta kodu ile giris, piyasa verisi goruntuleme, portfoy yonetimi ve kullanici ayarlari akislarini icerir.
+`invesment-app`, Expo ile geliştirilen MoneyBook mobil istemcisidir. Uygulama e-posta koduyla giriş, piyasa verisi görüntüleme, portföy yönetimi ve kullanıcı ayarlarını içerir.
 
-Backend karsiligi `/Users/airm4/Desktop/dev/project1-be` reposundaki `INVESTMENT` ve `SHAREDBACKEND` alanlaridir.
+Backend karşılığı `/Users/airm4/Desktop/Coding/project1-be` reposundaki `apps/investment`, ortak `/users` ve `apps/admin` alanlarıdır.
 
 ## Guncel Durum
 
 - Mobil istemci aktif gelistirme altindadir.
 - Backend baglantisi `EXPO_PUBLIC_BACKEND_URL` uzerinden yonetilir.
 - Piyasa verisi backendde OpenExchangeRates + CoinMarketCap birlesimiyle uretilir, istemci `/investment/market` endpointinden ceker.
+- Portföy ekleme/düzenleme, platform yeniden atama, para birimi değişikliği ve hesap silme işlemleri backend tarafında atomik yürütülür; işlem başarısız olursa yarım kayıt bırakılmaz.
+- Mobil arayüz backend’in teknik hata metnini doğrudan göstermez; kullanıcıya güvenli ve kısa mesaj verilir.
+- Yönetim panelinde MoneyBook kullanıcıları, portföy/platform detayları ve silinen hesap snapshotları incelenebilir.
 
 Not: Mobil release davranisi BoomDating/Petsy ile ayni modeldedir; mobil degisiklikler store review ve kullanici update sonrasinda canli olur.
 
@@ -50,7 +53,9 @@ Not: Mobil release davranisi BoomDating/Petsy ile ayni modeldedir; mobil degisik
 | `GET` | `/investment/market` | Hayir | Doviz, metal ve kripto fiyatlari |
 | `GET` | `/investment/profile` | Evet | Profil bilgisi |
 | `PUT` | `/investment/profile` | Evet | Profil guncelleme |
+| `PUT` | `/investment/onboarding` | Evet | Onboarding profilini ve para birimi tercihlerini kaydet |
 | `GET` | `/investment/preferences` | Evet | Favoriler ve alis kaynaklari |
+| `PUT` | `/investment/preferences/currency` | Evet | Para birimi tercihlerini atomik güncelle |
 | `PUT` | `/investment/preferences/home-favorites` | Evet | Favori siralamasini guncelle |
 | `POST` | `/investment/preferences/home-favorites` | Evet | Favori ekle |
 | `DELETE` | `/investment/preferences/home-favorites/:favoriteId` | Evet | Favori sil |
@@ -77,6 +82,15 @@ Ana namespace'ler:
 
 - `/users`
 - `/investment`
+
+## Dil, hata ve hesap yönetimi
+
+- Türkçe ve İngilizce desteklenir; tanınmayan dil değerlerinde İngilizce fallback kullanılır.
+- API istemcisi kullanıcıya yalnız ürün diline çevrilmiş, teknik ayrıntı içermeyen hata mesajları döndürür.
+- Hesap silme Ayarlar içindeki hesap yönetimi alanındadır ve iki aşamalı sistem onayı ister.
+- Silinen hesabın aktif verileri kaldırılır; silme anındaki snapshot yönetim panelindeki MoneyBook > Silinen Hesaplar alanına taşınır.
+- Destek adresi `support@48labs.tr`dir.
+- Uygulama sürümü `app.json` içindeki `expo.version` alanındadır.
 
 ## Kurulum
 
@@ -106,4 +120,4 @@ npm run web
 
 ## Ilgili Repo
 
-- [project1-be](/Users/airm4/Desktop/dev/project1-be/README.md)
+- [project1-be](/Users/airm4/Desktop/Coding/project1-be/README.md)

@@ -47,6 +47,8 @@ export const SettingsProvider = ({ children }) => {
 
     const nextSettings = {
       ...currentSettings,
+      baseCurrency: preferences.baseCurrency || currentSettings.baseCurrency,
+      localCurrency: preferences.localCurrency || currentSettings.localCurrency,
       homeFavoriteIds: normalizePreferenceList(preferences.homeFavoriteIds),
       investmentPlatforms: normalizePreferenceList(preferences.investmentPlatforms),
     };
@@ -132,7 +134,7 @@ export const SettingsProvider = ({ children }) => {
     return sanitizedSettings;
   }, [user]);
 
-  const setCurrencyPreferences = useCallback(async ({ baseCurrency, localCurrency }) => {
+  const setCurrencyPreferences = useCallback(async ({ baseCurrency, localCurrency, resetPortfolio = false }) => {
     const updates = {};
 
     if (baseCurrency && SUPPORTED_CURRENCIES.includes(baseCurrency)) {
@@ -144,7 +146,19 @@ export const SettingsProvider = ({ children }) => {
     }
 
     if (!Object.keys(updates).length) return settingsRef.current;
+    if (user) {
+      const data = await apiClient.put('/investment/preferences/currency', { ...updates, resetPortfolio });
+      const nextSettings = applyPreferences({ ...settingsRef.current, ...updates }, data?.preferences);
+      settingsRef.current = nextSettings;
+      setSettings(nextSettings);
+      await StorageService.saveSettings({ ...nextSettings, homeFavoriteIds: [], investmentPlatforms: [DEFAULT_INVESTMENT_PLATFORM] });
+      return nextSettings;
+    }
     return updateSettings(updates);
+  }, [applyPreferences, updateSettings, user]);
+
+  const applyCurrencyPreferencesLocally = useCallback(async ({ baseCurrency, localCurrency }) => {
+    return updateSettings({ baseCurrency, localCurrency });
   }, [updateSettings]);
 
   const setLanguage = useCallback(async (language) => {
@@ -260,6 +274,7 @@ export const SettingsProvider = ({ children }) => {
     investmentPlatforms: settings.investmentPlatforms || DEFAULT_SETTINGS.investmentPlatforms,
     updateSettings,
     setCurrencyPreferences,
+    applyCurrencyPreferencesLocally,
     setLanguage,
     setHomeFavoriteIds,
     addHomeFavorite,
@@ -269,7 +284,7 @@ export const SettingsProvider = ({ children }) => {
     defaultInvestmentPlatform: DEFAULT_INVESTMENT_PLATFORM,
     reloadSettings: loadSettings,
     t: (key) => translate(normalizeLanguage(settings.language), key),
-  }), [addHomeFavorite, addInvestmentPlatform, loadSettings, loading, removeHomeFavorite, removeInvestmentPlatform, setHomeFavoriteIds, settings, setCurrencyPreferences, setLanguage, updateSettings]);
+  }), [addHomeFavorite, addInvestmentPlatform, applyCurrencyPreferencesLocally, loadSettings, loading, removeHomeFavorite, removeInvestmentPlatform, setHomeFavoriteIds, settings, setCurrencyPreferences, setLanguage, updateSettings]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

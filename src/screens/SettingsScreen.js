@@ -127,7 +127,7 @@ function CurrencyPreferencesModal({
 export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const { holdings, clearPortfolio } = usePortfolio();
+  const { holdings, clearPortfolio, reload: reloadPortfolio } = usePortfolio();
   const { lastUpdated, refresh } = useMarket();
   const {
     localCurrency,
@@ -138,6 +138,7 @@ export default function SettingsScreen({ navigation }) {
     t,
   } = useSettings();
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [accountManagementOpen, setAccountManagementOpen] = useState(false);
   const [draftBaseCurrency, setDraftBaseCurrency] = useState(baseCurrency);
   const [draftLocalCurrency, setDraftLocalCurrency] = useState(localCurrency);
 
@@ -169,7 +170,17 @@ export default function SettingsScreen({ navigation }) {
               t('delete_everything_sub'),
               [
                 { text: t('cancel'), style: 'cancel' },
-                { text: t('delete_account'), style: 'destructive', onPress: deleteAccount },
+                {
+                  text: t('delete_account'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                    } catch (_error) {
+                      Alert.alert(t('error'), t('delete_account_error'));
+                    }
+                  },
+                },
               ]
             );
           },
@@ -209,10 +220,8 @@ export default function SettingsScreen({ navigation }) {
 
     const applyChange = async ({ resetPortfolio }) => {
       try {
-        await setCurrencyPreferences({ baseCurrency: draftBaseCurrency, localCurrency: draftLocalCurrency });
-        if (resetPortfolio) {
-          await clearPortfolio();
-        }
+        await setCurrencyPreferences({ baseCurrency: draftBaseCurrency, localCurrency: draftLocalCurrency, resetPortfolio });
+        if (resetPortfolio) await reloadPortfolio();
         setCurrencyModalVisible(false);
         Alert.alert(t('success'), resetPortfolio ? t('currency_preferences_changed_reset') : t('currency_preferences_changed'));
       } catch (err) {
@@ -402,14 +411,27 @@ export default function SettingsScreen({ navigation }) {
               <Text style={styles.logoutText}>{t('logout')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
-              <Ionicons name="trash" size={18} color="#fff" />
-              <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.deleteAccountWarning}>
-              {t('delete_account_warning')}
-            </Text>
+            <SectionHeader title={t('account_management')} />
+            <View style={styles.card}>
+              <SettingRow
+                icon="settings-outline"
+                iconColor={Colors.textSecondary}
+                iconBg={Colors.background}
+                label={t('account_management')}
+                sub={t('account_management_sub')}
+                onPress={() => setAccountManagementOpen((open) => !open)}
+                right={<Ionicons name={accountManagementOpen ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textLight} />}
+              />
+              {accountManagementOpen ? (
+                <View style={styles.accountManagementActions}>
+                  <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount} activeOpacity={0.85}>
+                    <Ionicons name="trash" size={18} color="#fff" />
+                    <Text style={styles.deleteAccountText}>{t('delete_account')}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.deleteAccountWarning}>{t('delete_account_warning')}</Text>
+                </View>
+              ) : null}
+            </View>
           </>
         ) : null}
       </ScrollView>
@@ -706,4 +728,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 8,
   },
+  accountManagementActions: { paddingTop: 2 },
 });

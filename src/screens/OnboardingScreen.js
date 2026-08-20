@@ -63,7 +63,7 @@ export default function OnboardingScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { user, updateProfile } = useAuth();
   const email = route?.params?.email || user?.email || '';
-  const { baseCurrency, localCurrency, language, setCurrencyPreferences, t } = useSettings();
+  const { baseCurrency, localCurrency, language, applyCurrencyPreferencesLocally, t } = useSettings();
 
   const [name, setName]   = useState('');
   const [selectedBaseCurrency, setSelectedBaseCurrency] = useState(baseCurrency || 'USD');
@@ -124,11 +124,11 @@ export default function OnboardingScreen({ route, navigation }) {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      await setCurrencyPreferences({
+      await updateProfile(name.trim(), {
         baseCurrency: selectedBaseCurrency,
         localCurrency: selectedLocalCurrency,
       });
-      await updateProfile(name.trim());
+      await applyCurrencyPreferencesLocally({ baseCurrency: selectedBaseCurrency, localCurrency: selectedLocalCurrency });
     } catch (e) {
       Alert.alert(t('error'), t('onboarding_save_error'));
       submittingRef.current = false;

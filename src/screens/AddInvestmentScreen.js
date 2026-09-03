@@ -324,10 +324,11 @@ function PlatformPickerModal({
         </View>
 
         <FlatList
+          style={styles.platformList}
           data={platforms}
           keyExtractor={(item) => item}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          contentContainerStyle={styles.platformListContent}
           renderItem={({ item }) => (
             <View style={[styles.platformItem, selectedPlatform === item && styles.platformItemActive]}>
               <TouchableOpacity
@@ -358,7 +359,7 @@ function PlatformPickerModal({
           )}
         />
 
-        <View style={[styles.platformAddBox, { paddingBottom: Math.max(insets.bottom, 12) + 52 }]}>
+        <View style={[styles.platformAddBox, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
           <Text style={styles.platformAddTitle}>{t('source_platform_add_new')}</Text>
           <TextInput
             style={styles.platformAddInput}
@@ -397,6 +398,7 @@ export default function AddInvestmentScreen({ navigation }) {
     addInvestmentPlatform,
     removeInvestmentPlatform,
     defaultInvestmentPlatform,
+    reloadSettings,
     t,
   } = useSettings();
 
@@ -409,6 +411,13 @@ export default function AddInvestmentScreen({ navigation }) {
   const [sourcePlatform, setSourcePlatform] = useState(defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM);
   const [priceCurrency, setPriceCurrency] = useState(localCurrency);
   const [loading, setLoading] = useState(false);
+
+  const openPlatformPicker = () => {
+    setPlatformPickerVisible(true);
+    // Platformlar hesap tercihi olarak sunucuda tutulur. Seçici her açıldığında
+    // diğer cihazlarda eklenenleri de almak için listeyi yenile.
+    reloadSettings();
+  };
   const platformOptions = useMemo(() => {
     const defaultPlatformName = defaultInvestmentPlatform || DEFAULT_INVESTMENT_PLATFORM;
     const holdingPlatforms = (holdings || [])
@@ -657,7 +666,7 @@ export default function AddInvestmentScreen({ navigation }) {
               </FormRow>
 
               <FormRow label={t('source_platform')}>
-                <TouchableOpacity style={styles.platformPickerBtn} onPress={() => setPlatformPickerVisible(true)} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.platformPickerBtn} onPress={openPlatformPicker} activeOpacity={0.85}>
                   <View style={styles.platformPickerLeft}>
                     <View style={styles.platformPickerIcon}>
                       <Ionicons name="business-outline" size={18} color={Colors.primary} />
@@ -1096,6 +1105,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentLight,
   },
   platformGuideText: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.textPrimary, fontWeight: '700' },
+  platformList: { flex: 1, minHeight: 0 },
+  platformListContent: { paddingHorizontal: 16, paddingBottom: 16 },
   platformItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1132,6 +1143,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerLight,
   },
   platformAddBox: {
+    flexShrink: 0,
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: Colors.border,

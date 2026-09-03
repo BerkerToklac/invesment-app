@@ -75,6 +75,8 @@ function CurrencyPreferencesModal({
   onSave,
   t,
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <View style={styles.modalBackdrop}>
@@ -91,7 +93,13 @@ function CurrencyPreferencesModal({
           </View>
           <Text style={styles.currencySheetInfo}>{t('currency_reset_notice')}</Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.currencySheetContent}>
+          <ScrollView
+            style={styles.currencySheetScroll}
+            contentContainerStyle={[styles.currencySheetContent, { paddingBottom: insets.bottom + 24 }]}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.currencySheetSection}>{t('base_currency')}</Text>
             <View style={styles.currencyChoiceGrid}>
               {LOCAL_CURRENCY_OPTIONS.map((currency) => (
@@ -610,6 +618,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   currencySheet: {
+    height: '86%',
     maxHeight: '86%',
     backgroundColor: Colors.cardBg,
     borderTopLeftRadius: 24,
@@ -646,7 +655,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600',
   },
-  currencySheetContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  currencySheetScroll: { flex: 1, minHeight: 0 },
+  currencySheetContent: { paddingHorizontal: 16 },
   currencySheetSection: {
     fontSize: 12,
     color: Colors.textLight,

@@ -47,7 +47,12 @@ export const SUPPORTED_CURRENCIES = [
   'BYN',
 ];
 
-export const LOCAL_CURRENCY_OPTIONS = SUPPORTED_CURRENCIES;
+export const LOCAL_CURRENCY_OPTIONS = [
+  'USD',
+  'EUR',
+  'TRY',
+  ...SUPPORTED_CURRENCIES.filter((currency) => !['USD', 'EUR', 'TRY'].includes(currency)),
+];
 
 export const CURRENCY_META = {
   USD: { symbol: '$', locale: 'en-US', name: 'US Dollar', localName: 'Dolar' },

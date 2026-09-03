@@ -21,7 +21,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useSettings } from '../context/SettingsContext';
 import { formatUSD, formatPercent } from '../utils/formatters';
 import { CURRENCY_META, SUPPORTED_CURRENCIES, convertUSDToCurrency, formatCurrency } from '../utils/currency';
-import { PREDEFINED_ASSETS, getAssetEmoji } from '../utils/assets';
+import { PREDEFINED_ASSETS, getAssetEmoji, getForexFlagUrl } from '../utils/assets';
 
 function RateCard({
   label,
@@ -352,6 +352,7 @@ export default function HomeScreen() {
         subValue: rate.subValue,
         subValueLabel: rate.subValueLabel,
         flag: getAssetEmoji(currency.toLowerCase()),
+        imageUrl: getForexFlagUrl(currency.toLowerCase()),
         icon: currency === 'EUR' ? 'logo-euro' : 'cash-outline',
         iconColor: currency === 'USD' ? '#16A34A' : Colors.primary,
         iconBg: currency === 'USD' ? '#DCFCE7' : Colors.accentLight,

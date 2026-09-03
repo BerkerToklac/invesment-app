@@ -1,6 +1,20 @@
 import { CURRENCY_META } from './currency';
 
-export const PREDEFINED_ASSETS = [
+const FOREX_FLAG_COUNTRY_CODES = {
+  usd: 'us', eur: 'eu', gbp: 'gb', jpy: 'jp', cny: 'cn', aud: 'au', cad: 'ca', chf: 'ch',
+  hkd: 'hk', sgd: 'sg', sar: 'sa', aed: 'ae', qar: 'qa', kwd: 'kw', ils: 'il', egp: 'eg',
+  inr: 'in', krw: 'kr', sek: 'se', mxn: 'mx', nzd: 'nz', nok: 'no', twd: 'tw', brl: 'br',
+  zar: 'za', pln: 'pl', try: 'tr', dkk: 'dk', czk: 'cz', huf: 'hu', ron: 'ro', bgn: 'bg',
+  isk: 'is', uah: 'ua', rsd: 'rs', all: 'al', bam: 'ba', mkd: 'mk', mdl: 'md', gel: 'ge',
+  amd: 'am', azn: 'az', rub: 'ru', byn: 'by',
+};
+
+export function getForexFlagUrl(assetId) {
+  const countryCode = FOREX_FLAG_COUNTRY_CODES[String(assetId || '').toLowerCase()];
+  return countryCode ? `https://flagcdn.com/w160/${countryCode}.png` : null;
+}
+
+const ASSETS = [
   {
     id: 'gold-gram',
     name: 'Gram Altın',
@@ -639,6 +653,11 @@ export const PREDEFINED_ASSETS = [
     emoji: '📦',
   },
 ];
+
+export const PREDEFINED_ASSETS = ASSETS.map((asset) => ({
+  ...asset,
+  iconUrl: asset.type === 'forex' ? getForexFlagUrl(asset.id) : asset.iconUrl,
+}));
 
 export const TROY_OZ_TO_GRAM = 31.1034768;
 

@@ -11,7 +11,7 @@ import { DEFAULT_INVESTMENT_PLATFORM } from '../utils/platforms';
 const SettingsContext = createContext(null);
 
 const DEFAULT_SETTINGS = {
-  localCurrency: 'TRY',
+  localCurrency: 'EUR',
   baseCurrency: 'USD',
   language: detectDeviceLanguage(),
   notifications: true,
@@ -266,7 +266,7 @@ export const SettingsProvider = ({ children }) => {
   const value = useMemo(() => ({
     settings,
     loading,
-    localCurrency: settings.localCurrency || 'TRY',
+    localCurrency: settings.localCurrency || 'EUR',
     baseCurrency: settings.baseCurrency || 'USD',
     language: normalizeLanguage(settings.language),
     notifications: settings.notifications ?? true,

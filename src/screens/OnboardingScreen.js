@@ -23,6 +23,8 @@ import { useSettings } from '../context/SettingsContext';
 import { CURRENCY_META, LOCAL_CURRENCY_OPTIONS } from '../utils/currency';
 
 function CurrencyStrip({ title, value, onChange, language, options = LOCAL_CURRENCY_OPTIONS }) {
+  const { t } = useSettings();
+
   return (
     <View style={styles.currencyBlock}>
       <View style={styles.fieldLabelRow}>
@@ -55,6 +57,10 @@ function CurrencyStrip({ title, value, onChange, language, options = LOCAL_CURRE
           );
         })}
       </ScrollView>
+      <View style={styles.currencyScrollHint} pointerEvents="none">
+        <Ionicons name="swap-horizontal" size={14} color={Colors.textSecondary} />
+        <Text style={styles.currencyScrollHintText}>{t('onboarding_currency_scroll_hint')}</Text>
+      </View>
     </View>
   );
 }
@@ -67,7 +73,7 @@ export default function OnboardingScreen({ route, navigation }) {
 
   const [name, setName]   = useState('');
   const [selectedBaseCurrency, setSelectedBaseCurrency] = useState(baseCurrency || 'USD');
-  const [selectedLocalCurrency, setSelectedLocalCurrency] = useState(localCurrency || 'TRY');
+  const [selectedLocalCurrency, setSelectedLocalCurrency] = useState(localCurrency || 'EUR');
   const [loading, setLoading] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const submittingRef = useRef(false);
@@ -107,10 +113,6 @@ export default function OnboardingScreen({ route, navigation }) {
 
   const firstLetter = name.trim() ? name.trim()[0].toUpperCase() : null;
   const canContinue = name.trim().length >= 2;
-  const localCurrencyOptions = [
-    'TRY',
-    ...LOCAL_CURRENCY_OPTIONS.filter((currency) => currency !== 'TRY'),
-  ];
 
   const handleSave = async () => {
     if (submittingRef.current) return;
@@ -227,7 +229,6 @@ export default function OnboardingScreen({ route, navigation }) {
               value={selectedLocalCurrency}
               onChange={setSelectedLocalCurrency}
               language={language}
-              options={localCurrencyOptions}
             />
 
             {/* İsim */}
@@ -458,6 +459,8 @@ const styles = StyleSheet.create({
   currencyBlock: { gap: 8, width: '100%' },
   currencyStripScroll: { width: '100%', flexGrow: 0 },
   currencyStrip: { gap: 8, paddingRight: 6 },
+  currencyScrollHint: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: -2 },
+  currencyScrollHintText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '700' },
   currencyChip: {
     width: 104,
     minHeight: 58,

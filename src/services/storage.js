@@ -43,7 +43,7 @@ export const StorageService = {
   async getSettings() {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
     const defaults = {
-      localCurrency: 'TRY',
+      localCurrency: 'EUR',
       baseCurrency: 'USD',
       language: detectDeviceLanguage(),
       notifications: true,

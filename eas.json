@@ -21,7 +21,8 @@
       "autoIncrement": true,
       "android": {
         "image": "sdk-54"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

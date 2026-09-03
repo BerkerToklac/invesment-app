@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,11 +77,13 @@ function CurrencyPreferencesModal({
   t,
 }) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const sheetHeight = Math.round(windowHeight * 0.9);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
       <View style={styles.modalBackdrop}>
-        <View style={styles.currencySheet}>
+        <View style={[styles.currencySheet, { height: sheetHeight }]}>
           <View style={styles.currencySheetHandle} />
           <View style={styles.currencySheetHeader}>
             <TouchableOpacity onPress={onCancel} style={styles.sheetHeaderButton}>
@@ -618,8 +621,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.42)',
   },
   currencySheet: {
-    height: '86%',
-    maxHeight: '86%',
     backgroundColor: Colors.cardBg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

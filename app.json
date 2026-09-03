@@ -2,7 +2,7 @@
   "expo": {
     "name": "MoneyBook",
     "slug": "invesment-app",
-    "version": "3.2.4",
+    "version": "3.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,12 +28,20 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      "expo-font"
+    ],
     "newArchEnabled": false,
     "extra": {
       "eas": {
         "projectId": "b20c6de8-3438-47ac-b331-2d3a32e527a4"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b20c6de8-3438-47ac-b331-2d3a32e527a4"
     }
   }
 }
